@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext.jsx';
 import { eventAPI, registrationAPI } from '../api/endpoints.js';
 import Sidebar from '../components/Sidebar.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
-import { Download, Search, Eye, EyeOff } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 const EventDetailPage = () => {
   const { id } = useParams();
   const { toasts, showToast, removeToast } = useToast();
   
+  const { user } = useContext(AuthContext);
   const [event, setEvent] = useState(null);
   const [registrations, setRegistrations] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -17,6 +19,10 @@ const EventDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [teamEmail, setTeamEmail] = useState('');
+  const [teamRole, setTeamRole] = useState('coordinator');
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [sendingReminder, setSendingReminder] = useState(false);
 
   useEffect(() => {
     fetchEventData();
@@ -25,11 +31,8 @@ const EventDetailPage = () => {
   const fetchEventData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch event details from slug/ID
-      const eventsRes = await eventAPI.getMyEvents({ limit: 100 });
-      const foundEvent = eventsRes.data.events.find(e => e._id === id);
-      if (foundEvent) setEvent(foundEvent);
+      const eventRes = await eventAPI.getEventById(id);
+      setEvent(eventRes.data.event);
 
       if (activeTab === 'registrations') {
         const regRes = await registrationAPI.getEventRegistrations(id, { page, limit: 20, search: searchTerm });
@@ -48,6 +51,63 @@ const EventDetailPage = () => {
     }
   };
 
+  const handleCopyLink = async (text, message) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(message, 'success');
+    } catch (error) {
+      showToast('Unable to copy link', 'error');
+    }
+  };
+
+  const handleSendReminder = async () => {
+    if (!reminderMessage.trim()) {
+      showToast('Please enter a reminder message', 'error');
+      return;
+    }
+
+    try {
+      setSendingReminder(true);
+      const res = await eventAPI.sendReminder(id, { message: reminderMessage });
+      showToast(res.data.message || 'Reminder sent successfully', 'success');
+      setReminderMessage('');
+    } catch (error) {
+      showToast(error?.response?.data?.message || 'Failed to send reminder', 'error');
+      console.error(error);
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
+  const handleInviteMember = async (event) => {
+    event.preventDefault();
+
+    if (!teamEmail.trim()) {
+      showToast('Please enter an email', 'error');
+      return;
+    }
+
+    try {
+      const res = await eventAPI.inviteTeamMember(id, { email: teamEmail, role: teamRole });
+      setEvent((prev) => ({ ...prev, teamMembers: res.data.teamMembers }));
+      setTeamEmail('');
+      setTeamRole('member');
+      showToast('Team member invited', 'success');
+    } catch (error) {
+      showToast(error?.response?.data?.message || 'Could not invite member', 'error');
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    try {
+      const res = await eventAPI.removeTeamMember(id, memberId);
+      setEvent((prev) => ({ ...prev, teamMembers: res.data.teamMembers }));
+      showToast('Team member removed', 'success');
+    } catch (error) {
+      showToast('Unable to remove member', 'error');
+    }
+  };
+
   const handleExportCSV = async () => {
     try {
       const response = await registrationAPI.exportCSV(id);
@@ -57,7 +117,7 @@ const EventDetailPage = () => {
       link.setAttribute('download', `registrations-${event.title}.csv`);
       document.body.appendChild(link);
       link.click();
-      link.parentChild.removeChild(link);
+      link.parentNode.removeChild(link);
       showToast('CSV exported successfully', 'success');
     } catch (error) {
       showToast('Failed to export CSV', 'error');
@@ -92,6 +152,12 @@ const EventDetailPage = () => {
     { id: 'export', label: 'Export' },
   ];
 
+  const organizerId = event?.organizer?._id?.toString?.() || event?.organizer?.toString?.();
+  const isOrganizer = organizerId === user?.id;
+  const isCoordinator = event?.teamMembers?.some(
+    (member) => member.userId?.toString() === user?.id && member.role === 'coordinator'
+  );
+
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -102,6 +168,8 @@ const EventDetailPage = () => {
     });
   };
 
+  const publicUrl = `${window.location.origin}/e/${event.slug}`;
+
   return (
     <div className="min-h-screen bg-bg">
       <Sidebar />
@@ -110,12 +178,26 @@ const EventDetailPage = () => {
         {/* Header */}
         <div className="bg-surface border-b border-surface-overlay p-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-bold">{event.title}</h1>
                 <p className="text-gray-400 mt-1">{event.slug}</p>
               </div>
-              <StatusBadge status={event.status} />
+              <div className="flex flex-wrap gap-3 items-center">
+                <button
+                  onClick={() => navigate(`/dashboard/events/${id}/edit`)}
+                  className="px-4 py-2 rounded-lg bg-brand text-black font-semibold hover:bg-brand-dark"
+                >
+                  Edit event
+                </button>
+                <button
+                  onClick={() => handleCopyLink(publicUrl, 'Landing page link copied')}
+                  className="px-4 py-2 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
+                >
+                  Copy landing link
+                </button>
+                <StatusBadge status={event.status} />
+              </div>
             </div>
             <p className="text-gray-300 max-w-2xl">{event.description}</p>
           </div>
@@ -148,48 +230,216 @@ const EventDetailPage = () => {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
-                  <h3 className="font-semibold mb-4">Event Details</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Category:</span>
-                      <span className="text-white">{event.category}</span>
+              <div className="grid xl:grid-cols-[1.6fr_1fr] gap-6">
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4 bg-surface border border-surface-overlay rounded-lg p-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">Organizer tools</h2>
+                      <p className="text-gray-400 mt-1">Share the event, invite teammates, and manage check-in workflows from one page.</p>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Date:</span>
-                      <span className="text-white">{formatDate(event.date)}</span>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <button
+                        onClick={() => navigate(`/dashboard/events/${id}/edit`)}
+                        className="w-full px-4 py-3 rounded-lg bg-brand text-black font-semibold hover:bg-brand-dark"
+                      >
+                        Edit details
+                      </button>
+                      <button
+                        onClick={() => navigate(`/checkin/${id}`)}
+                        className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
+                      >
+                        Open check-in
+                      </button>
+                      <button
+                        onClick={() => handleCopyLink(publicUrl, 'Landing page link copied')}
+                        className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
+                      >
+                        Copy landing link
+                      </button>
+                      <button
+                        onClick={() => window.open(`${publicUrl}/register`, '_blank')}
+                        className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
+                      >
+                        Open registration page
+                      </button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Venue:</span>
-                      <span className="text-white">{event.isOnline ? 'Online' : event.venue}</span>
+                    {(isOrganizer || isCoordinator) && (
+                      <div className="mt-6 p-6 bg-surface border border-border rounded-xl">
+                        <h3 className="text-lg font-semibold text-white mb-3">Send reminder email</h3>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Send a quick reminder to all registered attendees. Enter your message and click send.
+                        </p>
+                        <textarea
+                          value={reminderMessage}
+                          onChange={(e) => setReminderMessage(e.target.value)}
+                          rows={4}
+                          className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-transparent resize-none"
+                          placeholder="Write your reminder message here..."
+                        />
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-xs text-gray-500">
+                            Reminder emails are sent only to registered attendees.
+                          </p>
+                          <button
+                            onClick={handleSendReminder}
+                            disabled={sendingReminder}
+                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-brand text-black font-semibold hover:bg-brand-dark disabled:opacity-50"
+                          >
+                            {sendingReminder ? 'Sending...' : 'Send reminder'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                      <h3 className="font-semibold mb-4">Event details</h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Category:</span>
+                          <span className="text-white">{event.category}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Date:</span>
+                          <span className="text-white">{formatDate(event.date)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Venue:</span>
+                          <span className="text-white">{event.isOnline ? 'Online' : event.venue}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Capacity:</span>
+                          <span className="text-white">{event.maxCapacity || '∞'}</span>
+                        </div>
+                        {event.venueMapLink && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Map link:</span>
+                            <a href={event.venueMapLink} target="_blank" rel="noreferrer" className="text-brand hover:underline">
+                              Open map
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Capacity:</span>
-                      <span className="text-white">{event.maxCapacity || '∞'}</span>
+
+                    <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                      <h3 className="font-semibold mb-4">Event stats</h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Registrations:</span>
+                          <span className="text-white font-semibold">{event.currentRegistrations}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Template:</span>
+                          <span className="text-white capitalize">{event.template}</span>
+                        </div>
+                        {event.isPaid && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Ticket price:</span>
+                            <span className="text-white">₹{event.ticketPrice}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                    <h3 className="font-semibold mb-4">Public registration landing page</h3>
+                    <div className="rounded-2xl bg-slate-950 p-4 border border-surface-overlay">
+                      <p className="text-gray-400 text-sm break-all">{publicUrl}</p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          onClick={() => handleCopyLink(publicUrl, 'Landing page link copied')}
+                          className="px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
+                        >
+                          Copy link
+                        </button>
+                        <button
+                          onClick={() => window.open(`${publicUrl}/register`, '_blank')}
+                          className="px-4 py-3 rounded-lg bg-brand text-black font-semibold hover:bg-brand-dark"
+                        >
+                          Open registration page
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
-                  <h3 className="font-semibold mb-4">Stats</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Registrations:</span>
-                      <span className="text-white font-semibold">{event.currentRegistrations}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Template:</span>
-                      <span className="text-white capitalize">{event.template}</span>
-                    </div>
-                    {event.isPaid && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Ticket Price:</span>
-                        <span className="text-white">₹{event.ticketPrice}</span>
+                <aside className="space-y-6">
+                  <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                    <h3 className="font-semibold mb-4">Team access</h3>
+                    <p className="text-gray-400 text-sm mb-4">Invite coordinators and members by email and assign access.</p>
+                    <form onSubmit={handleInviteMember} className="space-y-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Email</label>
+                        <input
+                          value={teamEmail}
+                          onChange={(e) => setTeamEmail(e.target.value)}
+                          type="email"
+                          placeholder="team@example.com"
+                          className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white focus:ring-2 focus:ring-brand"
+                        />
                       </div>
-                    )}
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Role</label>
+                        <select
+                          value={teamRole}
+                          onChange={(e) => setTeamRole(e.target.value)}
+                          className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white"
+                        >
+                          <option value="coordinator">Coordinator</option>
+                          <option value="member">Member</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="w-full px-4 py-3 rounded-lg bg-brand text-black font-semibold hover:bg-brand-dark">
+                        Send invite
+                      </button>
+                    </form>
                   </div>
-                </div>
+
+                  <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                    <h3 className="font-semibold mb-4">Invite by email</h3>
+                    <a
+                      href={`mailto:?subject=${encodeURIComponent(`Join the ${event.title} team`)}&body=${encodeURIComponent(`You have been invited to help manage the event "${event.title}". View the dashboard here: ${window.location.origin}/dashboard/events/${id}`)}`}
+                      className="block w-full text-center px-4 py-3 rounded-lg bg-slate-950 text-white border border-surface-overlay hover:bg-slate-900"
+                    >
+                      Open mail client
+                    </a>
+                  </div>
+                </aside>
+              </div>
+
+              <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                <h3 className="font-semibold mb-4">Team members</h3>
+                {event.teamMembers?.length > 0 ? (
+                  <div className="space-y-3">
+                    {event.teamMembers.map((member) => (
+                      <div key={member._id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-overlay p-4 bg-slate-950">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium">{member.email}</p>
+                            {!member.active && (
+                              <span className="text-xs text-yellow-300 bg-yellow-500/10 px-2 py-1 rounded-full">Pending</span>
+                            )}
+                            {member.active && (
+                              <span className="text-xs text-green-300 bg-green-500/10 px-2 py-1 rounded-full">Accepted</span>
+                            )}
+                          </div>
+                          <p className="text-gray-400 text-sm">{member.role.charAt(0).toUpperCase() + member.role.slice(1)}</p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveMember(member._id)}
+                          className="px-3 py-2 rounded-lg border border-red-500 text-red-500 hover:bg-red-500/10"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400">No coordinators or members invited yet.</p>
+                )}
               </div>
             </div>
           )}

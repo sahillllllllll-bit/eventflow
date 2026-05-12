@@ -1,10 +1,11 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { Zap, Eye, EyeOff } from 'lucide-react';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, error } = useContext(AuthContext);
   const [formData, setFormData] = useState({
     name: '',
@@ -47,7 +48,8 @@ const RegisterPage = () => {
         phone: formData.phone,
         password: formData.password,
       });
-      navigate('/dashboard');
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      navigate(redirect);
     } catch (err) {
       setFormError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -179,7 +181,7 @@ const RegisterPage = () => {
           </form>
 
           <div className="mt-6 text-center text-gray-400 text-sm">
-            <p>Already have an account? <Link to="/login" className="text-brand hover:text-brand-light">Sign in</Link></p>
+            <p>Already have an account? <Link to={`/login${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-brand hover:text-brand-light">Sign in</Link></p>
           </div>
         </div>
       </div>

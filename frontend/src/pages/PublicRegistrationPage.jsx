@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventAPI, registrationAPI, paymentAPI } from '../api/endpoints.js';
+import { eventAPI, registrationAPI } from '../api/endpoints.js';
 import RegistrationForm from '../components/RegistrationForm.jsx';
 import Modal from '../components/Modal.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
@@ -51,59 +51,11 @@ const PublicRegistrationPage = () => {
         consentPromoEmails: formData.consentPromoEmails !== false,
       };
 
-      // If paid event, initiate Razorpay payment
-      if (event.isPaid) {
-        const paymentResponse = await paymentAPI.initiatePayment({
-          eventId: event._id,
-          amount: event.ticketPrice * 100, // Convert to paise
-          registrationData: payload,
-        });
+      // Direct registration (no payment)
+      const response = await registrationAPI.registerForEvent(payload);
 
-        // Open Razorpay checkout
-        const options = {
-          key: paymentResponse.data.razorpayKeyId,
-          amount: event.ticketPrice * 100,
-          currency: 'INR',
-          name: 'EventFlow',
-          description: `${event.title} - Event Ticket`,
-          order_id: paymentResponse.data.orderId,
-          handler: async (response) => {
-            // Payment successful
-            const registrationResponse = await registrationAPI.registerForEvent({
-              ...payload,
-              paymentId: response.razorpay_payment_id,
-              paymentStatus: 'paid',
-            });
-
-            setSuccessData(registrationResponse.data.registration);
-            setSuccessModal(true);
-          },
-          prefill: {
-            email: formData.email,
-            contact: formData.phone,
-          },
-          theme: {
-            color: '#6C47FF',
-          },
-        };
-
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          const rzp = new window.Razorpay(options);
-          rzp.open();
-        };
-        document.body.appendChild(script);
-      } else {
-        // Free event, direct registration
-        const response = await registrationAPI.registerForEvent({
-          ...payload,
-          paymentStatus: 'free',
-        });
-
-        setSuccessData(response.data.registration);
-        setSuccessModal(true);
-      }
+      setSuccessData(response.data.registration);
+      setSuccessModal(true);
     } catch (error) {
       showToast(error.response?.data?.message || 'Registration failed', 'error');
       console.error(error);
@@ -167,8 +119,6 @@ const PublicRegistrationPage = () => {
             formSections={event.formSections}
             onSubmit={handleRegistrationSubmit}
             loading={submitting}
-            isPaid={event.isPaid}
-            ticketPrice={event.ticketPrice}
           />
         </div>
       </div>
@@ -240,25 +190,39 @@ const PublicRegistrationPage = () => {
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-col">
             <button
               onClick={() => {
-                setSuccessModal(false);
-                navigate(`/e/${slug}`);
+                // Open ticket in new tab
+                if (successData && successData.ticketId) {
+                  window.open(`/ticket/${successData.ticketId}`, '_blank');
+                }
               }}
-              className="flex-1 px-4 py-2 border border-border rounded-lg text-gray-300 hover:text-white transition font-medium"
+              className="flex-1 px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
             >
-              View Event
+              <Zap size={18} />
+              View & Download PDF Ticket
             </button>
-            <button
-              onClick={() => {
-                setSuccessModal(false);
-                navigate('/');
-              }}
-              className="flex-1 px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg transition font-medium"
-            >
-              Home
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setSuccessModal(false);
+                  navigate(`/e/${slug}`);
+                }}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-gray-300 hover:text-white transition font-medium"
+              >
+                View Event
+              </button>
+              <button
+                onClick={() => {
+                  setSuccessModal(false);
+                  navigate('/');
+                }}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-gray-300 hover:text-white transition font-medium"
+              >
+                Home
+              </button>
+            </div>
           </div>
         </div>
       </Modal>

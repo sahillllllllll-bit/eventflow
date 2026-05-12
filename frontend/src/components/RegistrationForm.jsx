@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
-const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = false, ticketPrice = 0 }) => {
+const RegistrationForm = ({ formSections, onSubmit, loading = false }) => {
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -37,14 +37,36 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
   const validateForm = () => {
     const newErrors = {};
     
-    // Validate required fields
+    // Validate locked fields
+    lockedFields.forEach(field => {
+      if (!formData[field.id]) {
+        newErrors[field.id] = `${field.label} is required`;
+      }
+    });
+
+    // Validate locked fields formats
+    if (formData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+    }
+
+    if (formData.phone) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
+        newErrors.phone = 'Please enter a valid 10-digit phone number';
+      }
+    }
+    
+    // Validate required custom fields
     formSections.forEach(section => {
       if (section.required && !formData[section.id]) {
         newErrors[section.id] = `${section.label} is required`;
       }
     });
 
-    // Validate email format
+    // Validate email format in custom fields
     formSections.forEach(section => {
       if (section.type === 'email' && formData[section.id]) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,7 +76,7 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
       }
     });
 
-    // Validate phone format
+    // Validate phone format in custom fields
     formSections.forEach(section => {
       if (section.type === 'phone' && formData[section.id]) {
         const phoneRegex = /^[0-9]{10}$/;
@@ -75,6 +97,13 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
       onSubmit(formData);
     }
   };
+
+  // Locked/required fields that always appear
+  const lockedFields = [
+    { id: 'name', label: 'Full Name', type: 'text', placeholder: 'Your full name', required: true },
+    { id: 'email', label: 'Email Address', type: 'email', placeholder: 'your.email@example.com', required: true },
+    { id: 'phone', label: 'Phone Number', type: 'phone', placeholder: '10-digit phone number', required: true },
+  ];
 
   const renderField = (section) => {
     const fieldId = section.id;
@@ -222,7 +251,65 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Form Fields */}
+      {/* Locked Required Fields */}
+      <div className="space-y-6">
+        <div className="border-b border-border pb-6">
+          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Required Information</h3>
+          <div className="space-y-4">
+            {lockedFields.map((field) => {
+              const error = errors[field.id];
+              const value = formData[field.id] || '';
+
+              const fieldClasses = `w-full px-4 py-3 bg-surface-overlay border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition ${
+                error ? 'border-red-500/50' : 'border-border'
+              }`;
+
+              return (
+                <div key={field.id}>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {field.label} <span className="text-red-400">*</span>
+                  </label>
+                  {field.type === 'text' && (
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => handleChange(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                      className={fieldClasses}
+                    />
+                  )}
+                  {field.type === 'email' && (
+                    <input
+                      type="email"
+                      value={value}
+                      onChange={(e) => handleChange(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                      className={fieldClasses}
+                    />
+                  )}
+                  {field.type === 'phone' && (
+                    <input
+                      type="tel"
+                      value={value}
+                      onChange={(e) => handleChange(field.id, e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder={field.placeholder}
+                      className={fieldClasses}
+                    />
+                  )}
+                  {error && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-red-400">
+                      <AlertCircle className="w-4 h-4" />
+                      {error}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Form Fields */}
       {formSections.map((section) => (
         <div key={section.id}>
           {['heading', 'divider'].includes(section.type) ? (
@@ -259,16 +346,6 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
           </span>
         </label>
       </div>
-
-      {/* Pricing Info */}
-      {isPaid && (
-        <div className="p-4 bg-brand/5 border border-brand/20 rounded-lg">
-          <p className="text-sm text-gray-300">
-            <span className="font-semibold">Ticket Price:</span> ₹{ticketPrice}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">You'll be redirected to Razorpay for payment after submission.</p>
-        </div>
-      )}
 
       {/* Submit Button */}
       <button

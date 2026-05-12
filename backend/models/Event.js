@@ -17,6 +17,43 @@ const formSectionSchema = new mongoose.Schema({
   order: Number,
 }, { _id: false });
 
+const teamMemberSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true,
+  },
+  role: {
+    type: String,
+    enum: ['coordinator', 'member'],
+    default: 'member',
+  },
+  addedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  invitedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  active: {
+    type: Boolean,
+    default: false,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  inviteTokenHash: String,
+  inviteTokenCreatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  inviteExpiresAt: Date,
+  acceptedAt: Date,
+}, { _id: true });
+
 const eventSchema = new mongoose.Schema({
   organizer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -33,6 +70,7 @@ const eventSchema = new mongoose.Schema({
     sparse: true,
   },
   description: String,
+  prizesAndGoodies: String,
   coverImage: String,
   template: {
     type: String,
@@ -61,12 +99,21 @@ const eventSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  sendTicketEmails: {
+    type: Boolean,
+    default: true,
+  },
+  paidEmailCredits: {
+    type: Number,
+    default: 0,
+  },
   maxCapacity: Number,
   currentRegistrations: {
     type: Number,
     default: 0,
   },
   formSections: [formSectionSchema],
+  teamMembers: [teamMemberSchema],
   status: {
     type: String,
     enum: ['draft', 'published', 'completed', 'cancelled'],

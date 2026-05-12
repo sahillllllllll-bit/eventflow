@@ -35,6 +35,9 @@ const CreateEventPage = () => {
     template: 'minimal',
     isPaid: false,
     ticketPrice: 0,
+    sendTicketEmails: true,
+    paidEmailCredits: 0,
+    prizesAndGoodies: '',
     formSections: [],
   });
 
@@ -101,30 +104,37 @@ const CreateEventPage = () => {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        date: formData.date,
-        endDate: formData.endDate,
-        venue: formData.venue,
-        venueMapLink: formData.venueMapLink,
+        date: formData.date || undefined,
+        endDate: formData.endDate || undefined,
+        venue: formData.venue || undefined,
+        venueMapLink: formData.venueMapLink || undefined,
         isOnline: formData.isOnline,
-        meetLink: formData.meetLink,
-        maxCapacity: formData.maxCapacity ? parseInt(formData.maxCapacity) : null,
+        meetLink: formData.meetLink || undefined,
+        maxCapacity: formData.maxCapacity ? parseInt(formData.maxCapacity) : undefined,
         isPaid: formData.isPaid,
         ticketPrice: formData.isPaid ? parseInt(formData.ticketPrice) : 0,
+        sendTicketEmails: formData.sendTicketEmails,
+        paidEmailCredits: formData.sendTicketEmails ? Number(formData.paidEmailCredits) : 0,
         template: formData.template,
+        prizesAndGoodies: formData.prizesAndGoodies || undefined,
         tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
         formSections: formData.formSections,
       };
 
-      const response = await eventAPI.createEvent(payload);
+      const createResponse = await eventAPI.createEvent(payload);
+      const eventId = createResponse.data.event._id;
       
-      showToast('Event created successfully!', 'success');
+      // Publish the event
+      await eventAPI.publishEvent(eventId);
+      
+      showToast('Event created and published successfully!', 'success');
       setPublishModal(false);
       
       setTimeout(() => {
-        navigate(`/dashboard/events/${response.data.event._id}`);
+        navigate(`/dashboard/events/${eventId}`);
       }, 1000);
     } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to create event', 'error');
+      showToast(error.response?.data?.message || 'Failed to create and publish event', 'error');
     } finally {
       setLoading(false);
     }
@@ -136,6 +146,7 @@ const CreateEventPage = () => {
       
       const payload = {
         ...formData,
+        paidEmailCredits: formData.sendTicketEmails ? Number(formData.paidEmailCredits) : 0,
         tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
         status: 'draft',
       };
@@ -345,12 +356,59 @@ const CreateEventPage = () => {
                 </div>
               )}
 
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Prizes & Goodies</label>
+                <textarea
+                  value={formData.prizesAndGoodies}
+                  onChange={(e) => handleInputChange('prizesAndGoodies', e.target.value)}
+                  placeholder="List prizes, goodies, and rewards for winners or participants (e.g., Winner gets premium membership, All participants get certificates, etc.)"
+                  rows="4"
+                  className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-transparent transition outline-none resize-none"
+                />
+              </div>
+
               <div className="p-4 bg-brand/5 border border-brand/20 rounded-lg">
                 <p className="text-sm font-medium text-gray-300 mb-2">💰 Platform Fees:</p>
                 <ul className="text-sm text-gray-400 space-y-1">
                   <li>• ₹1 per ticket</li>
                   {formData.isPaid && <li>• 3% on paid events</li>}
                 </ul>
+              </div>
+
+              <div className="mt-6 p-4 bg-surface-overlay border border-border rounded-xl">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.sendTicketEmails}
+                    onChange={(e) => handleInputChange('sendTicketEmails', e.target.checked)}
+                    className="w-4 h-4 accent-brand rounded"
+                  />
+                  <span className="font-medium">Send tickets and confirmation emails</span>
+                </label>
+                <p className="text-gray-400 text-sm mt-3">
+                  100 emails free. Above 100 emails, ₹0.10 per additional email. Purchase extra email credits if you expect more registrations.
+                </p>
+
+                {formData.sendTicketEmails && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 items-end">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Extra email credits</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.paidEmailCredits}
+                        onChange={(e) => handleInputChange('paidEmailCredits', Number(e.target.value) || 0)}
+                        className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-transparent transition outline-none"
+                        placeholder="Enter extra credits"
+                      />
+                    </div>
+                    <div className="rounded-2xl border border-border p-4 bg-surface-raised">
+                      <p className="text-sm text-gray-400">Estimated email charge</p> 
+                      <p className="text-2xl font-semibold text-white">₹{(formData.paidEmailCredits || 0) * 0.10}</p>
+                      <p className="text-xs text-gray-500 mt-1">Pay in full at checkout based on extra credits.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

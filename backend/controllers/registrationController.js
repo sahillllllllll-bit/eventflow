@@ -4,6 +4,7 @@ import { generateTicketId } from '../utils/helpers.js';
 import { generateQRCode } from '../services/qrService.js';
 import { sendTicketConfirmationEmail } from '../services/emailService.js';
 import { exportRegistrationsToCSV } from '../services/csvService.js';
+import { generateTicketHTML } from '../services/ticketGenerator.js';
 
 export const registerForEvent = async (req, res, next) => {
   try {
@@ -42,12 +43,24 @@ export const registerForEvent = async (req, res, next) => {
     event.currentRegistrations += 1;
     await event.save();
 
-    // Send confirmation email with QR
-    await sendTicketConfirmationEmail(email, {
-      eventTitle: event.title,
-      attendeeName: name,
-      ticketId,
-    }, qrCode);
+    // Send confirmation email with professional ticket if enabled
+    if (event.sendTicketEmails) {
+      try {
+        await sendTicketConfirmationEmail(email, {
+          eventTitle: event.title,
+          attendeeName: name,
+          ticketId,
+          eventDate: event.date,
+          eventTime: event.time,
+          eventLocation: event.location,
+          phone: phone,
+          eventColor: event.brandColor || '#6C47FF',
+        }, qrCode);
+      } catch (emailError) {
+        console.error('Failed to send ticket email:', emailError);
+        // Don't fail registration if email fails
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -147,6 +160,95 @@ export const checkInAttendee = async (req, res, next) => {
     next(error);
   }
 };
+
+export const downloadTicket = async (req, res, next) => {
+  try {
+    const { ticketId } = req.params;
+
+    const registration = await Registration.findOne({ ticketId }).populate('event');
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    const event = registration.event;
+    
+    // Format time from date if available
+    let eventTime = '';
+    if (event.date) {
+      const date = new Date(event.date);
+      eventTime = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+
+    const ticketHTML = generateTicketHTML({
+      ticketId: registration.ticketId,
+      attendeeName: registration.name,
+      eventTitle: event.title,
+      eventDate: event.date,
+      eventTime: eventTime,
+      eventLocation: event.venue || event.meetLink || 'TBA',
+      qrCodeBase64: registration.qrCode,
+      phone: registration.phone,
+      email: registration.email,
+      eventColor: '#6C47FF',
+    });
+
+    // Send as HTML file
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="ticket-${ticketId}.html"`);
+    res.send(ticketHTML);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTicketDetails = async (req, res, next) => {
+  try {
+    const { ticketId } = req.params;
+
+    const registration = await Registration.findOne({ ticketId }).populate('event');
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    const event = registration.event;
+    
+    // Format time from date if available
+    let eventTime = '';
+    if (event.date) {
+      const date = new Date(event.date);
+      eventTime = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      ticket: {
+        ticketId: registration.ticketId,
+        attendeeName: registration.name,
+        email: registration.email,
+        phone: registration.phone,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventTime: eventTime,
+        eventLocation: event.venue || event.meetLink || 'TBA',
+        qrCode: registration.qrCode,
+        checkedIn: registration.checkedIn,
+        checkedInAt: registration.checkedInAt,
+        registeredAt: registration.registeredAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export const exportRegistrationsCSV = async (req, res, next) => {
   try {

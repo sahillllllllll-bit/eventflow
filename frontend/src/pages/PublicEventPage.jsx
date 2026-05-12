@@ -56,9 +56,7 @@ const PublicEventPage = () => {
       {/* Header */}
       <nav className="border-b border-border px-6 py-4 bg-surface/40 backdrop-blur">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <button onClick={() => navigate('/')} className="text-xl font-bold hover:text-brand transition">
-            ← Back
-          </button>
+           {event.title && <h1 className="text-2xl font-bold">{event.title}</h1>}
           <button
             onClick={() => {
               navigator.clipboard.writeText(window.location.href);
@@ -184,6 +182,18 @@ const PublicEventPage = () => {
             <p className="text-gray-300 leading-relaxed whitespace-pre-line text-lg">
               {event.description}
             </p>
+          </div>
+        )}
+
+        {/* Prizes & Goodies Section */}
+        {event.prizesAndGoodies && (
+          <div className="border-t border-border pt-12 mb-12">
+            <h2 className="text-3xl font-bold mb-6">🎁 Prizes & Goodies</h2>
+            <div className="p-6 bg-surface-raised border border-border rounded-xl">
+              <p className="text-gray-300 leading-relaxed whitespace-pre-line text-lg">
+                {event.prizesAndGoodies}
+              </p>
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { generateTicketEmailHTML } from './ticketGenerator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -56,30 +57,57 @@ export const sendPasswordResetEmail = async (email, resetLink) => {
   }
 };
 
-export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
+export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: `Your ticket for ${ticketData.eventTitle}`,
+      subject: `You're invited to join the ${eventTitle} team on EventFlow`,
       html: `
-        <h2>Registration Confirmed!</h2>
-        <p>Hi ${ticketData.attendeeName},</p>
-        <p>Your ticket for <strong>${ticketData.eventTitle}</strong> has been confirmed.</p>
-        <p><strong>Ticket ID:</strong> ${ticketData.ticketId}</p>
-        <p>Your QR code is attached below:</p>
-        <img src="cid:qrcode" alt="QR Code" style="max-width: 200px;">
-        <p>See you at the event!</p>
+        <h2>You've been invited to collaborate</h2>
+        <p>You have been invited to join the event team for <strong>${eventTitle}</strong>.</p>
+        <p>Click below to accept the invitation and access the event dashboard:</p>
+        <a href="${acceptLink}" style="background-color: #6C47FF; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Accept Invite</a>
+        <p>If you do not have an EventFlow account, please sign up with the same email address to accept the invitation.</p>
       `,
-      attachments: [
+    });
+    console.log(`Team invite email sent to ${email}`);
+  } catch (error) {
+    console.error('Error sending team invite email:', error);
+    throw error;
+  }
+};
+
+export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
+  try {
+    const ticketHTML = generateTicketEmailHTML({
+      ticketId: ticketData.ticketId,
+      attendeeName: ticketData.attendeeName,
+      eventTitle: ticketData.eventTitle,
+      eventDate: ticketData.eventDate || new Date(),
+      eventTime: ticketData.eventTime || '',
+      eventLocation: ticketData.eventLocation || '',
+      qrCodeBase64: qrCodeBase64,
+      phone: ticketData.phone || '',
+      email: email,
+      eventColor: ticketData.eventColor || '#6C47FF',
+    });
+
+    await transporter.sendMail({
+      from: `"${process.env.SENDGRID_FROM_NAME}" <${process.env.SENDGRID_FROM_EMAIL}>`,
+      to: email,
+      subject: `Your Ticket for ${ticketData.eventTitle} 🎫`,
+      html: ticketHTML,
+      // Embed QR code as inline attachment for better compatibility
+      attachments: qrCodeBase64.startsWith('data:') ? [] : [
         {
           filename: 'ticket-qr.png',
-          content: Buffer.from(qrCodeBase64.split(',')[1], 'base64'),
+          content: Buffer.from(qrCodeBase64, 'base64'),
           cid: 'qrcode',
         },
       ],
     });
-    console.log(`Ticket confirmation email sent to ${email}`);
+    console.log(`Professional ticket confirmation email sent to ${email}`);
   } catch (error) {
     console.error('Error sending ticket confirmation email:', error);
     throw error;
@@ -96,6 +124,7 @@ export const sendEventReminderEmail = async (email, eventData) => {
         <h2>Event Reminder</h2>
         <p>Hi ${eventData.attendeeName},</p>
         <p><strong>${eventData.eventTitle}</strong> is happening on ${eventData.eventDate}</p>
+        <p>${eventData.message || 'This is a reminder for your upcoming event.'}</p>
         <p>See you there!</p>
       `,
     });

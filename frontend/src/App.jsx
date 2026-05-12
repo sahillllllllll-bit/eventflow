@@ -19,7 +19,9 @@ import PromoEmailPage from './pages/PromoEmailPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import PublicEventPage from './pages/PublicEventPage.jsx';
 import PublicRegistrationPage from './pages/PublicRegistrationPage.jsx';
+import AcceptInvitePage from './pages/AcceptInvitePage.jsx';
 import CheckInPage from './pages/CheckInPage.jsx';
+import TicketPage from './pages/TicketPage.jsx';
 
 function App() {
   return (
@@ -32,8 +34,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
           <Route path="/e/:slug" element={<PublicEventPage />} />
           <Route path="/e/:slug/register" element={<PublicRegistrationPage />} />
+          <Route path="/ticket/:ticketId" element={<TicketPage />} />
 
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />

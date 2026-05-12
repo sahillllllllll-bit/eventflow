@@ -19,6 +19,11 @@ export const eventAPI = {
   updateEvent: (id, data) => axiosInstance.put(`/events/${id}`, data),
   deleteEvent: (id) => axiosInstance.delete(`/events/${id}`),
   publishEvent: (id) => axiosInstance.post(`/events/${id}/publish`),
+  sendReminder: (id, data) => axiosInstance.post(`/events/${id}/reminder`, data),
+  inviteTeamMember: (id, data) => axiosInstance.post(`/events/${id}/team`, data),
+  acceptTeamInvite: (token) => axiosInstance.post(`/events/team/accept/${token}`),
+  updateTeamMember: (id, memberId, data) => axiosInstance.patch(`/events/${id}/team/${memberId}`, data),
+  removeTeamMember: (id, memberId) => axiosInstance.delete(`/events/${id}/team/${memberId}`),
   getAnalytics: (id) => axiosInstance.get(`/events/${id}/analytics`),
 };
 
@@ -28,6 +33,8 @@ export const registrationAPI = {
   getEventRegistrations: (eventId, params) => axiosInstance.get(`/registrations/event/${eventId}`, { params }),
   checkIn: (ticketId) => axiosInstance.post(`/registrations/checkin/${ticketId}`),
   exportCSV: (eventId) => axiosInstance.get(`/registrations/export/${eventId}`, { responseType: 'blob' }),
+  getTicketDetails: (ticketId) => axiosInstance.get(`/registrations/ticket/${ticketId}`),
+  downloadTicket: (ticketId) => axiosInstance.get(`/registrations/download/${ticketId}`, { responseType: 'blob' }),
 };
 
 // Promo Email APIs

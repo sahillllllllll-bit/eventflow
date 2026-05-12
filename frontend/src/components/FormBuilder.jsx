@@ -39,8 +39,7 @@ const FormBuilder = ({ sections, onSectionsChange }) => {
     onSectionsChange(
       sections.map(s => (s.id === id ? { ...s, ...data } : s))
     );
-    setEditingId(null);
-    setEditData(null);
+    // Don't close the modal - let user click Done explicitly
   };
 
   const deleteSection = (id) => {
@@ -172,6 +171,11 @@ const FormBuilder = ({ sections, onSectionsChange }) => {
         <Modal
           isOpen={true}
           onClose={() => {
+            // Get the latest data from sections
+            const latestSection = sections.find(s => s.id === editingId);
+            if (latestSection) {
+              setEditData(latestSection);
+            }
             setEditingId(null);
             setEditData(null);
           }}
