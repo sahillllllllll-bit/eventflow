@@ -53,3 +53,31 @@ export const paymentAPI = {
   initiatePayment: (data) => axiosInstance.post('/payments/initiate', data),
   verifyPayment: (data) => axiosInstance.post('/payments/verify', data),
 };
+
+// Certificate APIs
+export const certificateAPI = {
+  // Events
+  getOrganizerEvents: () => axiosInstance.get('/certificates/organizer/events'),
+  getEventRegistrations: (eventId) => axiosInstance.get(`/certificates/event/${eventId}/registrations`),
+
+  // Templates
+  createTemplate: (data) => axiosInstance.post('/certificates/template/create', data),
+  getTemplate: (templateId) => axiosInstance.get(`/certificates/template/${templateId}`),
+  updateTemplate: (templateId, data) => axiosInstance.put(`/certificates/template/${templateId}`, data),
+  deleteTemplate: (templateId) => axiosInstance.delete(`/certificates/template/${templateId}`),
+  getOrganizerTemplates: () => axiosInstance.get('/certificates/organizer/templates'),
+
+  // Certificate Generation
+  generatePreview: (data) => axiosInstance.post('/certificates/preview', data),
+  checkPricing: (data) => axiosInstance.post('/certificates/check-pricing', data),
+  generateCertificates: (data) => axiosInstance.post('/certificates/generate', data),
+  getIssuedCertificates: (templateId) => axiosInstance.get(`/certificates/issued/${templateId}`),
+
+  // Download and Send
+  downloadCertificatePDF: (certificateId) => axiosInstance.get(`/certificates/download/${certificateId}`),
+  sendCertificatesEmail: (data) => axiosInstance.post('/certificates/send-emails', data),
+
+  // Pricing
+  getPricingInfo: () => axiosInstance.get('/certificates/pricing/info'),
+};
+

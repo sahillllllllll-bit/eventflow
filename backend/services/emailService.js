@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendVerificationEmail = async (email, verifyLink) => {
+export  const  sendVerificationEmail = async (email, verifyLink) => {
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,

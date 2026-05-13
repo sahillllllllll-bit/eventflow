@@ -15,6 +15,7 @@ import eventRoutes from './routes/eventRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
 import promoEmailRoutes from './routes/promoEmailRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
+import certificateRoutes from './routes/certificateRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -52,6 +53,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/registrations', registrationRoutes);
 app.use('/api/promo', promoEmailRoutes);
 app.use('/api/payouts', payoutRoutes);
+app.use('/api/certificates', certificateRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

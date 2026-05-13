@@ -17,6 +17,7 @@ import EditEventPage from './pages/EditEventPage.jsx';
 import PayoutsPage from './pages/PayoutsPage.jsx';
 import PromoEmailPage from './pages/PromoEmailPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import CertificatePage from './pages/CertificatePage.jsx';
 import PublicEventPage from './pages/PublicEventPage.jsx';
 import PublicRegistrationPage from './pages/PublicRegistrationPage.jsx';
 import AcceptInvitePage from './pages/AcceptInvitePage.jsx';
@@ -45,6 +46,7 @@ function App() {
           <Route path="/dashboard/events/create" element={<ProtectedRoute><CreateEventPage /></ProtectedRoute>} />
           <Route path="/dashboard/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
           <Route path="/dashboard/events/:id/edit" element={<ProtectedRoute><EditEventPage /></ProtectedRoute>} />
+          <Route path="/dashboard/certificates" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
           <Route path="/dashboard/payouts" element={<ProtectedRoute><PayoutsPage /></ProtectedRoute>} />
           <Route path="/dashboard/promo" element={<ProtectedRoute><PromoEmailPage /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />

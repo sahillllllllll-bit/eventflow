@@ -198,12 +198,6 @@ downloadTicket: (ticketId) => axiosInstance.get(`/registrations/download/${ticke
 
 ## Configuration
 
-### Environment Variables (already set in .env):
-```
-SENDGRID_API_KEY=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
-SENDGRID_FROM_EMAIL=chillpilltrio.business@gmail.com
-SENDGRID_FROM_NAME=Eventflow
-EMAIL_FROM=noreply@eventflow.in
 ```
 
 ### Event Configuration:

@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
-import { Zap, BarChart3, Zap as Events, Mail, Settings, LogOut } from 'lucide-react';
+import { Zap, BarChart3, Zap as Events, Mail, Award, Settings, LogOut } from 'lucide-react';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ const Sidebar = () => {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/dashboard/events', label: 'Events', icon: Events },
+    { path: '/dashboard/certificates', label: 'Certificates', icon: Award },
     { path: '/dashboard/payouts', label: 'Payouts', icon: Zap },
     { path: '/dashboard/promo', label: 'Promo Emails', icon: Mail },
     { path: '/dashboard/settings', label: 'Settings', icon: Settings },
