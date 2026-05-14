@@ -107,9 +107,9 @@ const CertificateTemplateCard = ({ template, isSelected, onClick }) => {
       <div className="p-4 bg-white">
         <h3 className="font-semibold text-gray-900 text-sm mb-1">{template.name}</h3>
         <p className="text-xs text-gray-600 mb-4">{template.description}</p>
-        <button className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all">
+        {/* <button className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all">
           {isSelected ? '✓ Selected' : 'Select Template'}
-        </button>
+        </button> */}
       </div>
     </div>
   );
