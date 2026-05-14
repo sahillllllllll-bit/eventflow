@@ -32,11 +32,34 @@ app.use(helmet());
 app.use(mongoSanitize());
 app.use(xssClean());
 
-// CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+// CORS - Allow requests from frontend
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      'http://localhost:5173',
+      'http://localhost:3000',
+      // GitHub Codespaces
+      /app\.github\.dev$/,
+    ].filter(Boolean);
+
+    if (!origin || allowedOrigins.some(ao => {
+      if (ao instanceof RegExp) {
+        return ao.test(origin);
+      }
+      return ao === origin;
+    })) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
@@ -85,11 +108,13 @@ const connectDB = async () => {
 // Start Server
 // ==================
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for GitHub Codespaces
 
 connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on ${HOST}:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Frontend URL: ${process.env.CLIENT_URL}`);
   });
 });
 

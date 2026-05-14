@@ -1,92 +1,45 @@
 import React, { useState } from 'react';
-import { Edit2, Plus, ChevronRight, Search } from 'lucide-react';
-import { PREBUILT_TEMPLATES } from '../utils/prebuiltTemplates.js';
+import { Edit2, Plus, ChevronRight, Search, Sparkles, Check } from 'lucide-react';
+import { getAllTemplatesWithDecorations } from '../utils/prebuiltTemplates.js';
+import TemplateRenderer, { getDecorationShapes } from './TemplateRenderer.jsx';
 
 const CertificateTemplateCard = ({ template, isSelected, onClick }) => {
   const bgStyle =
-    template.template.backgroundColor.includes('gradient')
+    template.template.backgroundColor?.includes('gradient')
       ? { background: template.template.backgroundColor }
-      : { backgroundColor: template.template.backgroundColor };
-
-  const shapeStyles = {
-    1: (
-      <>
-        <div className="absolute top-4 left-4 w-16 h-16 bg-blue-900 rounded-br-3xl" />
-        <div className="absolute bottom-4 right-4 w-16 h-16 bg-yellow-400 rounded-tl-3xl" />
-        <div className="absolute top-6 right-6 w-20 h-4 bg-yellow-400 rounded-full opacity-90" />
-      </>
-    ),
-    2: (
-      <>
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-0 w-20 h-20 rounded-br-full bg-yellow-500 opacity-80" />
-          <div className="absolute bottom-0 right-0 w-24 h-24 rounded-tl-full bg-yellow-400 opacity-80" />
-          <div className="absolute top-4 left-4 w-14 h-14 rounded-full border-4 border-yellow-300 shadow-xl" />
-        </div>
-      </>
-    ),
-    3: (
-      <>
-        <div className="absolute inset-y-0 left-0 w-24 bg-emerald-700 opacity-90" />
-        <div className="absolute top-6 left-8 w-16 h-16 rounded-full bg-yellow-400 shadow-lg" />
-      </>
-    ),
-    4: (
-      <>
-        <div className="absolute top-4 left-4 w-16 h-16 border border-rose-700 rounded-full opacity-40" />
-        <div className="absolute top-4 right-4 w-16 h-16 border border-rose-700 rounded-full opacity-40" />
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-rose-700 rounded-full shadow-inner" />
-      </>
-    ),
-    5: (
-      <>
-        <div className="absolute top-0 left-0 w-24 h-24 bg-red-800 skew-y-6" />
-        <div className="absolute bottom-0 right-0 w-24 h-24 bg-yellow-400 skew-y-12" />
-        <div className="absolute right-8 top-12 w-16 h-16 bg-red-600 rounded-full border-4 border-yellow-300 shadow-lg" />
-      </>
-    ),
-    6: (
-      <>
-        <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-200 rounded-bl-full shadow-lg" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-300 rounded-tr-full shadow-lg" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-4 border-yellow-500 bg-yellow-100" />
-      </>
-    ),
-    7: (
-      <>
-        <div className="absolute top-4 left-4 w-16 h-16 bg-violet-600 rounded-br-2xl" />
-        <div className="absolute bottom-4 right-4 w-16 h-16 bg-violet-500 rounded-tl-2xl" />
-        <div className="absolute inset-x-14 top-0 h-1 bg-violet-300" />
-      </>
-    ),
-    8: (
-      <>
-        <div className="absolute top-0 left-0 w-24 h-24 bg-blue-600 rounded-br-full opacity-80" />
-        <div className="absolute bottom-0 right-0 w-32 h-28 bg-yellow-400 rounded-tl-full opacity-85" />
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full border-4 border-yellow-300 bg-yellow-200 shadow-xl" />
-      </>
-    ),
-  };
+      : { backgroundColor: template.template.backgroundColor || '#ffffff' };
 
   return (
     <div
       onClick={onClick}
-      className={`cursor-pointer rounded-3xl overflow-hidden border-2 transition-all duration-300 transform hover:scale-105 ${
+      className={`cursor-pointer rounded-3xl overflow-hidden border-4 transition-all duration-300 transform hover:scale-105 group ${
         isSelected
-          ? 'border-blue-600 shadow-2xl scale-105'
+          ? 'border-blue-600 shadow-2xl scale-105 ring-4 ring-blue-400/50 ring-offset-2'
           : 'border-gray-200 hover:border-blue-400 shadow-lg hover:shadow-2xl'
       }`}
     >
+      {/* Template Preview Card */}
       <div className="relative h-64 overflow-hidden" style={bgStyle}>
+        {/* Overlay */}
         <div className="absolute inset-0 bg-white/0" />
         <div className="absolute inset-0 border-2 border-white/20 rounded-3xl" />
-        {shapeStyles[template.previewVariant]}
+        
+        {/* Decorations */}
+        {template.previewVariant && (
+          <div className="absolute inset-0 pointer-events-none z-0">
+            {getDecorationShapes(template.previewVariant)}
+          </div>
+        )}
 
+        {/* Content */}
         <div className="relative z-10 h-full flex flex-col justify-center px-6 py-5 text-center">
           <div className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-3">Certificate</div>
           <div
             className="font-semibold text-lg md:text-xl mb-3"
-            style={{ color: template.template.headingColor, fontFamily: template.template.recipientNameFontFamily || 'inherit' }}
+            style={{
+              color: template.template.headingColor,
+              fontFamily: template.template.recipientNameFontFamily || 'inherit',
+            }}
           >
             {template.template.heading}
           </div>
@@ -95,7 +48,10 @@ const CertificateTemplateCard = ({ template, isSelected, onClick }) => {
           </div>
           <div
             className="text-2xl font-semibold mb-3"
-            style={{ color: template.template.recipientNameColor, fontFamily: template.template.recipientNameFontFamily || 'Georgia, serif' }}
+            style={{
+              color: template.template.recipientNameColor,
+              fontFamily: template.template.recipientNameFontFamily || 'Georgia, serif',
+            }}
           >
             {template.template.recipientName || 'Recipient Name'}
           </div>
@@ -103,13 +59,22 @@ const CertificateTemplateCard = ({ template, isSelected, onClick }) => {
             {template.template.descriptionText}
           </div>
         </div>
+
+        {/* Selection Badge with Glow */}
+        {isSelected && (
+          <div className="absolute top-3 right-3 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+            <Check className="w-6 h-6 text-white" />
+          </div>
+        )}
       </div>
+
+      {/* Info Section */}
       <div className="p-4 bg-white">
         <h3 className="font-semibold text-gray-900 text-sm mb-1">{template.name}</h3>
         <p className="text-xs text-gray-600 mb-4">{template.description}</p>
         {/* <button className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all">
           {isSelected ? '✓ Selected' : 'Select Template'}
-        </button> */}
+        </button>  */}
       </div>
     </div>
   );
@@ -122,8 +87,9 @@ const TemplatePreview = ({ template, isSelected, onClick }) => {
 export default function TemplateSelection({ onSelectTemplate, onCustomStart, registrationCount, eventName }) {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const allTemplates = getAllTemplatesWithDecorations();
 
-  const filteredTemplates = PREBUILT_TEMPLATES.filter(
+  const filteredTemplates = allTemplates.filter(
     (t) =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -218,14 +184,14 @@ export default function TemplateSelection({ onSelectTemplate, onCustomStart, reg
 
         {/* Selected Template Action */}
         {selectedTemplate && selectedTemplate !== 0 && (
-          <div className="fixed bottom-8 right-8 bg-white rounded-lg shadow-2xl p-6 border border-gray-200">
-            <p className="text-sm text-gray-600 mb-4">Ready to customize your certificate?</p>
+          <div className="fixed bottom-8 right-8 bg-white rounded-xl shadow-2xl p-6 border-2 border-blue-200 backdrop-blur-sm">
+            <p className="text-sm text-gray-600 mb-4 font-medium">Ready to customize your certificate?</p>
             <button
               onClick={() => {
-                const template = PREBUILT_TEMPLATES.find((t) => t.id === selectedTemplate);
-                handleSelect(template);
+                const template = allTemplates.find((t) => t.id === selectedTemplate);
+                if (template) handleSelect(template);
               }}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
             >
               <Edit2 size={18} />
               Start Editing
