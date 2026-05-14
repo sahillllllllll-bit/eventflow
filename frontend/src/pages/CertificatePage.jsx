@@ -13,10 +13,10 @@ import {
   Award,
 } from 'lucide-react';
 import TemplateSelection from '../components/TemplateSelection.jsx';
-import CertificateCanvasEditorV2 from '../components/CertificateCanvasEditorV2.jsx';
+import CertificateTemplateEditor from '../components/CertificateTemplateEditor.jsx';
 import CertificatePreview from '../components/CertificatePreview.jsx';
 import Sidebar from '../components/Sidebar.jsx';
-import { PREBUILT_TEMPLATES } from '../utils/prebuiltTemplates.js';
+import { getTemplateWithDecorations } from '../utils/prebuiltTemplates.js';
 
 export default function CertificatePage() {
   const navigate = useNavigate();
@@ -106,13 +106,18 @@ export default function CertificatePage() {
   };
 
   const handleSelectTemplate = (selectedTemplate) => {
-    const templateData = {
-      eventId: selectedEvent._id,
-      templateName: selectedTemplate.name,
-      ...selectedTemplate.template,
-    };
-    setTemplate(templateData);
-    setStep(4);
+    const enrichedTemplate = getTemplateWithDecorations(selectedTemplate.id);
+    if (enrichedTemplate) {
+      const templateData = {
+        eventId: selectedEvent._id,
+        id: enrichedTemplate.id,
+        templateName: enrichedTemplate.name,
+        previewVariant: enrichedTemplate.previewVariant,
+        ...enrichedTemplate.template,
+      };
+      setTemplate(templateData);
+      setStep(4);
+    }
   };
 
   const handleCustomStart = () => {
@@ -308,10 +313,11 @@ export default function CertificatePage() {
           </div>
         )}
 
-        {/* Step 4: Canvas Editor */}
+        {/* Step 4: Template Editor */}
         {step === 4 && (
-          <CertificateCanvasEditorV2
+          <CertificateTemplateEditor
             template={template}
+            event={selectedEvent}
             onSave={handleSaveTemplate}
             onBack={() => setStep(3)}
             isLoading={isLoading}

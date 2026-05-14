@@ -1,0 +1,200 @@
+/* Certificate Template Selection & Editor Animations */
+
+@keyframes templateGlow {
+  0% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+}
+
+@keyframes templatePulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes elementHighlight {
+  0% {
+    background-color: rgba(59, 130, 246, 0);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  100% {
+    background-color: rgba(59, 130, 246, 0);
+  }
+}
+
+.template-card-selected {
+  animation: templateGlow 2s ease-in-out infinite;
+}
+
+.template-card-hover {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.template-card-hover:hover {
+  transform: translateY(-4px);
+}
+
+.element-editable {
+  transition: all 200ms ease-out;
+  cursor: text;
+  position: relative;
+}
+
+.element-editable:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 0.5rem;
+}
+
+.element-editable.selected {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.5);
+  background-color: rgba(59, 130, 246, 0.08);
+  animation: elementHighlight 1s ease-in-out;
+}
+
+.certificate-canvas {
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.certificate-canvas-active {
+  box-shadow: 0 30px 80px rgba(59, 130, 246, 0.2);
+}
+
+.template-border {
+  box-sizing: border-box;
+  transition: all 300ms ease-out;
+}
+
+.template-decoration {
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 300ms ease-out;
+}
+
+.template-content {
+  position: relative;
+  z-index: 10;
+  transition: opacity 300ms ease-out;
+}
+
+/* Smooth scroll and layout transitions */
+.properties-panel {
+  transition: all 300ms ease-out;
+  overflow-y: auto;
+}
+
+.color-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 200ms ease-out;
+}
+
+.color-input-wrapper:hover {
+  transform: translateX(2px);
+}
+
+/* Canvas zoom animations */
+.canvas-container {
+  transition: transform 200ms ease-out;
+  transform-origin: center;
+}
+
+.zoom-in-btn:hover,
+.zoom-out-btn:hover {
+  background-color: rgba(229, 231, 235, 1);
+  transform: scale(1.1);
+  transition: all 150ms ease-out;
+}
+
+/* Selection ring animation */
+.selection-ring {
+  animation: selectionRing 1s ease-in-out;
+}
+
+@keyframes selectionRing {
+  0% {
+    border-color: rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    border-color: rgba(59, 130, 246, 1);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 1);
+  }
+}
+
+/* Button ripple effect */
+.button-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-action::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 600ms, height 600ms;
+}
+
+.button-action:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Text editor inline editing */
+.inline-text-editor {
+  border: 2px dashed transparent;
+  transition: all 200ms ease-out;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+}
+
+.inline-text-editor:focus {
+  border-color: rgba(59, 130, 246, 1);
+  background-color: rgba(59, 130, 246, 0.05);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Smooth transitions for property panel */
+.property-transition {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}

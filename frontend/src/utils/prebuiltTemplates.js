@@ -650,3 +650,32 @@ export const getTemplateById = (id) => {
   const tmpl = PREBUILT_TEMPLATES.find((t) => t.id === id);
   return tmpl ? { ...tmpl.template } : null;
 };
+
+export const getTemplateWithDecorations = (id) => {
+  const tmpl = PREBUILT_TEMPLATES.find((t) => t.id === id);
+  if (!tmpl) return null;
+  
+  return {
+    id: tmpl.id,
+    name: tmpl.name,
+    description: tmpl.description,
+    previewVariant: tmpl.previewVariant || null,
+    template: {
+      ...tmpl.template,
+      previewVariant: tmpl.previewVariant || null,
+    },
+  };
+};
+
+export const getAllTemplatesWithDecorations = () => {
+  return PREBUILT_TEMPLATES.map((tmpl) => ({
+    id: tmpl.id,
+    name: tmpl.name,
+    description: tmpl.description,
+    previewVariant: tmpl.previewVariant || null,
+    template: {
+      ...tmpl.template,
+      previewVariant: tmpl.previewVariant || null,
+    },
+  }));
+};
