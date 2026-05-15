@@ -143,20 +143,48 @@ export default function CertificatePage() {
   const handleSaveTemplate = async (templateData) => {
     try {
       setIsLoading(true);
+
+      // Ensure all required fields are present
+      if (!templateData.templateName || templateData.templateName.trim() === '') {
+        showToast('Template name is required', 'error');
+        return;
+      }
+
+      if (!selectedEvent?._id) {
+        showToast('Event is required', 'error');
+        return;
+      }
+
+      // Log for debugging
+      console.log('Saving template with data:', {
+        templateName: templateData.templateName,
+        eventId: selectedEvent._id,
+        backgroundColor: templateData.backgroundColor,
+        heading: templateData.heading,
+      });
+
       // organizerId is extracted from JWT in backend auth middleware
       const response = await certificateAPI.createTemplate({
         ...templateData,
         eventId: selectedEvent._id,
       });
+
+      console.log('Template saved successfully:', response.data);
+
       setTemplateId(response.data._id);
       setTemplate(response.data);
       const pricingCheck = await certificateAPI.checkPricing({
         certificateCount: selectedRegistrations.length,
       });
       setPricingInfo(pricingCheck.data);
+      showToast('Template saved successfully!', 'success');
       setStep(5);
     } catch (error) {
-      showToast(error.response?.data?.error || 'Failed to save template', 'error');
+      console.error('Save template error:', error);
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message ||
+                          'Failed to save template. Please check all required fields.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }

@@ -44,15 +44,39 @@ export const createTemplate = async (req, res) => {
     const { eventId, ...templateData } = req.body;
     const organizerId = req.user._id;
 
+    // Validate required fields
+    if (!eventId) {
+      return res.status(400).json({ error: 'Event ID is required', field: 'eventId' });
+    }
+
+    if (!templateData.templateName || templateData.templateName.trim() === '') {
+      return res.status(400).json({ error: 'Template name is required', field: 'templateName' });
+    }
+
+    if (!organizerId) {
+      return res.status(400).json({ error: 'Organizer ID is required', field: 'organizerId' });
+    }
+
+    console.log('Creating template:', {
+      templateName: templateData.templateName,
+      eventId,
+      organizerId,
+    });
+
     const template = await createCertificateTemplate({
       ...templateData,
       eventId,
       organizerId,
     });
 
+    console.log('Template created:', template._id);
     res.status(201).json(template);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Template creation error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to create template',
+      details: error.errors ? Object.keys(error.errors) : undefined
+    });
   }
 };
 
