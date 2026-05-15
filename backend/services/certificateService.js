@@ -44,8 +44,33 @@ export const getEventRegistrations = async (eventId) => {
 
 // Create certificate template
 export const createCertificateTemplate = async (templateData) => {
-  const template = new CertificateTemplate(templateData);
+  // Validate required fields
+  if (!templateData.templateName) {
+    throw new Error('Template name is required');
+  }
+
+  if (!templateData.organizerId) {
+    throw new Error('Organizer ID is required');
+  }
+
+  if (!templateData.eventId) {
+    throw new Error('Event ID is required');
+  }
+
+  console.log('Creating template in service:', {
+    templateName: templateData.templateName,
+    organizerId: templateData.organizerId,
+    eventId: templateData.eventId,
+  });
+
+  const template = new CertificateTemplate({
+    ...templateData,
+    templateName: templateData.templateName.trim(),
+  });
+
   await template.save();
+  
+  console.log('Template saved successfully:', template._id);
   return template;
 };
 
