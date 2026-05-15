@@ -61,7 +61,10 @@ export const certificateAPI = {
   getEventRegistrations: (eventId) => axiosInstance.get(`/certificates/event/${eventId}/registrations`),
 
   // Templates
-  createTemplate: (data) => axiosInstance.post('/certificates/template/create', data),
+  createTemplate: (data) => {
+    console.log('API: Creating template with data:', data);
+    return axiosInstance.post('/certificates/template/create', data);
+  },
   getTemplate: (templateId) => axiosInstance.get(`/certificates/template/${templateId}`),
   updateTemplate: (templateId, data) => axiosInstance.put(`/certificates/template/${templateId}`, data),
   deleteTemplate: (templateId) => axiosInstance.delete(`/certificates/template/${templateId}`),
