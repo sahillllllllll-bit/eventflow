@@ -1,163 +1,83 @@
-import React, { useState } from 'react';
-import {
-  Copy,
-  Trash2,
-  Lock,
-  Unlock,
-  Eye,
-  EyeOff,
-  ChevronUp,
-  ChevronDown,
-  Edit2,
-} from 'lucide-react';
+import React from 'react';
+import { Eye, EyeOff, Lock, Unlock, Trash2, Type, Image, Square, QrCode, GripVertical } from 'lucide-react';
 
-/**
- * Layer Panel Component
- * Manage layers, reorder, lock, visibility, rename
- */
+const typeIcon = (type) => {
+  switch (type) {
+    case 'text': return <Type size={12} />;
+    case 'image': return <Image size={12} />;
+    case 'shape': return <Square size={12} />;
+    case 'qrcode': return <QrCode size={12} />;
+    default: return <Square size={12} />;
+  }
+};
+
+const typeLabel = (el) => {
+  if (el.type === 'text') return el.content?.substring(0, 20) || 'Text';
+  if (el.type === 'image') return 'Image';
+  if (el.type === 'shape') return `Shape (${el.shapeType || 'rect'})`;
+  if (el.type === 'qrcode') return 'QR Code';
+  return el.type;
+};
+
 export default function LayerPanel({ store, elements, selectedIds }) {
-  const [renamingId, setRenamingId] = useState(null);
-  const [renameValue, setRenameValue] = useState('');
-
-  const handleStartRename = (element) => {
-    setRenamingId(element.id);
-    setRenameValue(element.name || `${element.type} ${element.id.slice(-4)}`);
-  };
-
-  const handleRename = (elementId) => {
-    store.updateElement(elementId, { name: renameValue });
-    setRenamingId(null);
-  };
-
-  const getElementLabel = (element) => {
-    if (element.name) return element.name;
-    if (element.type === 'text') return `Text: "${element.content?.slice(0, 20)}..."`;
-    if (element.type === 'image') return 'Image';
-    if (element.type === 'shape') return `${element.shapeType || 'Shape'}`;
-    return `${element.type}`;
-  };
+  // Render in reverse so top layers are at top of list
+  const layersReversed = [...elements].reverse();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Layer List */}
-      <div className="flex-1 overflow-y-auto">
-        {elements.length === 0 ? (
-          <div className="p-4 text-center text-gray-400 text-sm">
-            No elements yet. Add some!
-          </div>
-        ) : (
-          <div className="space-y-1 p-2">
-            {/* Reverse order for display (last added on top) */}
-            {[...elements].reverse().map((element) => (
+    <div className="flex-1 overflow-y-auto">
+      {layersReversed.length === 0 ? (
+        <div className="p-4 text-center text-gray-500 text-xs mt-4">
+          No layers yet. Add elements from Tools tab.
+        </div>
+      ) : (
+        <div className="p-2 space-y-1">
+          {layersReversed.map((el) => {
+            const isSelected = selectedIds.includes(el.id);
+            return (
               <div
-                key={element.id}
-                className={`p-2 rounded border transition ${
-                  selectedIds.includes(element.id)
-                    ? 'bg-blue-600 border-blue-500'
-                    : 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                key={el.id}
+                onClick={() => store.getState().selectElement(el.id)}
+                className={`flex items-center gap-2 px-2 py-2 rounded cursor-pointer transition group ${
+                  isSelected
+                    ? 'bg-blue-600/30 border border-blue-500/50'
+                    : 'hover:bg-gray-700 border border-transparent'
                 }`}
               >
-                {renamingId === element.id ? (
-                  <div className="flex gap-1 mb-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={() => handleRename(element.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleRename(element.id);
-                        if (e.key === 'Escape') setRenamingId(null);
-                      }}
-                      className="flex-1 px-2 py-1 bg-gray-800 text-white rounded text-xs"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div
-                      className="cursor-pointer mb-1 text-xs truncate"
-                      onClick={() => store.selectElement(element.id)}
-                      onDoubleClick={() => handleStartRename(element)}
-                    >
-                      {getElementLabel(element)}
-                    </div>
-
-                    <div className="flex gap-1 text-xs">
-                      {/* Lock Toggle */}
-                      <button
-                        onClick={() => store.toggleLock(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded transition"
-                        title={element.isLocked ? 'Unlock' : 'Lock'}
-                      >
-                        {element.isLocked ? (
-                          <Lock size={12} />
-                        ) : (
-                          <Unlock size={12} />
-                        )}
-                      </button>
-
-                      {/* Visibility Toggle */}
-                      <button
-                        onClick={() => store.toggleVisibility(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded transition"
-                        title={element.isHidden ? 'Show' : 'Hide'}
-                      >
-                        {element.isHidden ? (
-                          <EyeOff size={12} />
-                        ) : (
-                          <Eye size={12} />
-                        )}
-                      </button>
-
-                      {/* Duplicate */}
-                      <button
-                        onClick={() => store.duplicateElement(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded transition"
-                        title="Duplicate"
-                      >
-                        <Copy size={12} />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => store.deleteElement(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-500 rounded transition"
-                        title="Delete"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-
-                    {/* Layer Ordering */}
-                    <div className="flex gap-1 text-xs mt-1">
-                      <button
-                        onClick={() => store.bringForward(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded transition"
-                        title="Bring forward"
-                      >
-                        <ChevronUp size={12} />
-                      </button>
-                      <button
-                        onClick={() => store.sendBackward(element.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded transition"
-                        title="Send backward"
-                      >
-                        <ChevronDown size={12} />
-                      </button>
-                    </div>
-                  </>
-                )}
+                <GripVertical size={12} className="text-gray-600 flex-shrink-0" />
+                <span className={`flex-shrink-0 ${el.isHidden ? 'opacity-30' : 'text-gray-400'}`}>
+                  {typeIcon(el.type)}
+                </span>
+                <span className={`flex-1 text-xs truncate ${el.isHidden ? 'text-gray-600 line-through' : 'text-gray-300'}`}>
+                  {typeLabel(el)}
+                </span>
+                <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); store.getState().toggleVisibility(el.id); }}
+                    className="p-0.5 rounded hover:bg-gray-600 text-gray-400 hover:text-white transition"
+                    title={el.isHidden ? 'Show' : 'Hide'}
+                  >
+                    {el.isHidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); store.getState().toggleLock(el.id); }}
+                    className={`p-0.5 rounded hover:bg-gray-600 transition ${el.isLocked ? 'text-amber-400' : 'text-gray-400 hover:text-white'}`}
+                    title={el.isLocked ? 'Unlock' : 'Lock'}
+                  >
+                    {el.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); store.getState().deleteElement(el.id); }}
+                    className="p-0.5 rounded hover:bg-red-900 text-gray-400 hover:text-red-400 transition"
+                    title="Delete"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Stats Footer */}
-      <div className="p-3 border-t border-gray-700 text-xs text-gray-400">
-        <div>{elements.length} element{elements.length !== 1 ? 's' : ''}</div>
-        <div>{selectedIds.length} selected</div>
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

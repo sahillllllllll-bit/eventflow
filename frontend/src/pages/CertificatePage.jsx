@@ -7,16 +7,18 @@ import {
   ChevronRight,
   Download,
   Mail,
-  Check,
   AlertCircle,
   Loader,
   Award,
+  Calendar,
+  MapPin,
+  Users,
 } from 'lucide-react';
 import TemplateSelection from '../components/TemplateSelection.jsx';
-import CertificateTemplateEditor from '../components/CertificateTemplateEditor.jsx';
-import CertificatePreview from '../components/CertificatePreview.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import { getTemplateWithDecorations } from '../utils/prebuiltTemplates.js';
+import CanvasCertificateEditor from '../components/CanvasCertificateEditor.jsx';
+import { renderCertificateToDOM } from '../services/certificateRenderer.js';
 
 export default function CertificatePage() {
   const navigate = useNavigate();
@@ -44,9 +46,11 @@ export default function CertificatePage() {
     try {
       setIsLoading(true);
       const response = await certificateAPI.getOrganizerEvents();
-      setEvents(response.data);
+      // response.data is the array returned by getOrganizerEventsWithCount
+      setEvents(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       showToast(error.response?.data?.error || 'Failed to fetch events', 'error');
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +70,7 @@ export default function CertificatePage() {
       setIsLoading(true);
       setSelectedEvent(event);
       const response = await certificateAPI.getEventRegistrations(event._id);
-      setRegistrations(response.data);
+      setRegistrations(Array.isArray(response.data) ? response.data : []);
       setSelectedRegistrations([]);
       setSelectAll(false);
       setStep(2);
@@ -88,10 +92,7 @@ export default function CertificatePage() {
 
   const handleToggleRegistration = (registration) => {
     const id = registration._id;
-    if (!id) {
-      showToast('Registration ID is invalid', 'error');
-      return;
-    }
+    if (!id) return;
     setSelectedRegistrations((prev) =>
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
     );
@@ -108,20 +109,19 @@ export default function CertificatePage() {
   const handleSelectTemplate = (selectedTemplate) => {
     const enrichedTemplate = getTemplateWithDecorations(selectedTemplate.id);
     if (enrichedTemplate) {
-      const templateData = {
+      setTemplate({
         eventId: selectedEvent._id,
         id: enrichedTemplate.id,
         templateName: enrichedTemplate.name,
         previewVariant: enrichedTemplate.previewVariant,
         ...enrichedTemplate.template,
-      };
-      setTemplate(templateData);
+      });
       setStep(4);
     }
   };
 
   const handleCustomStart = () => {
-    const customTemplate = {
+    setTemplate({
       eventId: selectedEvent._id,
       templateName: 'Custom Certificate',
       heading: 'Certificate of Completion',
@@ -135,42 +135,25 @@ export default function CertificatePage() {
       templateDesign: 'landscape',
       recipientNameFontSize: 36,
       recipientNameColor: '#3B82F6',
-    };
-    setTemplate(customTemplate);
+    });
     setStep(4);
   };
 
   const handleSaveTemplate = async (templateData) => {
     try {
       setIsLoading(true);
-
-      // Ensure all required fields are present
-      if (!templateData.templateName || templateData.templateName.trim() === '') {
+      if (!templateData.templateName?.trim()) {
         showToast('Template name is required', 'error');
         return;
       }
-
       if (!selectedEvent?._id) {
         showToast('Event is required', 'error');
         return;
       }
-
-      // Log for debugging
-      console.log('Saving template with data:', {
-        templateName: templateData.templateName,
-        eventId: selectedEvent._id,
-        backgroundColor: templateData.backgroundColor,
-        heading: templateData.heading,
-      });
-
-      // organizerId is extracted from JWT in backend auth middleware
       const response = await certificateAPI.createTemplate({
         ...templateData,
         eventId: selectedEvent._id,
       });
-
-      console.log('Template saved successfully:', response.data);
-
       setTemplateId(response.data._id);
       setTemplate(response.data);
       const pricingCheck = await certificateAPI.checkPricing({
@@ -180,11 +163,11 @@ export default function CertificatePage() {
       showToast('Template saved successfully!', 'success');
       setStep(5);
     } catch (error) {
-      console.error('Save template error:', error);
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message ||
-                          'Failed to save template. Please check all required fields.';
-      showToast(errorMessage, 'error');
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Failed to save template.';
+      showToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -212,16 +195,95 @@ export default function CertificatePage() {
   const handleDownloadAll = async () => {
     try {
       setIsGenerating(true);
-      for (const cert of generatedCertificates) {
-        const response = await certificateAPI.downloadCertificatePDF(cert._id);
-        const printWindow = window.open('', '', 'width=1200,height=800');
-        printWindow.document.write(response.data.html);
-        printWindow.document.close();
-        printWindow.print();
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+      let downloadCount = 0;
+      const failedCerts = [];
+
+      for (let i = 0; i < generatedCertificates.length; i++) {
+        const cert = generatedCertificates[i];
+        try {
+          console.log(`[${i + 1}/${generatedCertificates.length}] Downloading: ${cert.recipientName}`);
+          const response = await certificateAPI.downloadCertificatePDF(cert._id);
+
+          if (!response.data.success) {
+            console.error(`Failed to load data for ${cert.recipientName}`);
+            failedCerts.push(cert.recipientName);
+            continue;
+          }
+
+          const { certificate, template, event } = response.data;
+
+          // Render certificate with proper styling
+          const container = document.createElement('div');
+          container.style.position = 'absolute';
+          container.style.left = '-9999px';
+          container.style.top = '-9999px';
+          document.body.appendChild(container);
+
+          renderCertificateToDOM(
+            { name: certificate.recipientName, uniqueCode: certificate.uniqueCode },
+            container,
+            template,
+            { eventName: event.title, date: new Date(event.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) }
+          );
+
+          const certCanvas = container.querySelector('[data-certificate-canvas]');
+          if (!certCanvas) {
+            document.body.removeChild(container);
+            console.error(`Failed to render certificate for ${cert.recipientName}`);
+            failedCerts.push(cert.recipientName);
+            continue;
+          }
+
+          // Wait for all images to load
+          await waitForImagesToLoad(certCanvas);
+
+          const canvas = await html2canvas(certCanvas, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            windowHeight: 744,
+            windowWidth: 1050,
+            logging: false,
+          });
+
+          // Create PDF
+          const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [1050, 744],
+          });
+          const imgData = canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', 0, 0, 1050, 744);
+          pdf.save(response.data.fileName);
+
+          document.body.removeChild(container);
+          downloadCount++;
+          console.log(`✓ Downloaded: ${cert.recipientName}`);
+          
+          // Add delay between downloads to ensure browser processes each one
+          if (i < generatedCertificates.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+          }
+        } catch (error) {
+          console.error(`Error downloading certificate for ${cert.recipientName}:`, error);
+          failedCerts.push(cert.recipientName);
+        }
       }
-      showToast('All certificates downloaded', 'success');
+
+      // Show detailed results
+      if (failedCerts.length === 0) {
+        showToast(`✓ Successfully downloaded all ${downloadCount} certificates!`, 'success');
+      } else if (downloadCount > 0) {
+        showToast(`Downloaded ${downloadCount} of ${generatedCertificates.length}. Failed: ${failedCerts.length}`, 'warning');
+      } else {
+        showToast(`Failed to download any certificates`, 'error');
+      }
     } catch (error) {
-      showToast('Failed to download certificates', 'error');
+      showToast(`Failed to download certificates: ${error.message}`, 'error');
+      console.error(error);
     } finally {
       setIsGenerating(false);
     }
@@ -234,9 +296,9 @@ export default function CertificatePage() {
       const response = await certificateAPI.sendCertificatesEmail({ certificateIds });
       showToast(`${response.data.sentCount} emails sent successfully`, 'success');
       if (response.data.failedEmails?.length > 0) {
-        showToast(`${response.data.failedEmails.length} emails failed to send`, 'error');
+        showToast(`${response.data.failedEmails.length} emails failed`, 'error');
       }
-    } catch (error) {
+    } catch {
       showToast('Failed to send emails', 'error');
     } finally {
       setIsGenerating(false);
@@ -245,25 +307,41 @@ export default function CertificatePage() {
 
   const STEPS = ['Select Event', 'Recipients', 'Template', 'Canvas Editor', 'Send'];
 
+  // ── Shared step header ───────────────────────────────────────────────────
+  const StepHeader = ({ stepNum, title, onBack }) => (
+    <div className="bg-surface border-b border-border px-4 sm:px-6 py-4 sm:py-5">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Award className="w-6 h-6 text-brand flex-shrink-0" />
+          <div>
+            <p className="text-xs text-gray-500">
+              Step {stepNum} of {STEPS.length} — {STEPS[stepNum - 1]}
+            </p>
+            <h1 className="text-xl sm:text-2xl font-bold leading-tight">{title}</h1>
+          </div>
+        </div>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 border border-border hover:border-brand rounded-lg text-gray-400 hover:text-brand transition text-sm flex-shrink-0"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-bg text-white">
       <Sidebar />
 
-      <div className="ml-60 min-h-screen">
-        {/* Step 1: Select Event */}
+      <div className="lg:ml-60 min-h-screen">
+        {/* ── Step 1: Select Event ─────────────────────────────────────────── */}
         {step === 1 && (
           <>
-            <div className="bg-white border-b border-gray-200 p-6">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex items-center gap-3 mb-2">
-                  <Award className="w-7 h-7 text-blue-600" />
-                  <h1 className="text-3xl font-bold">Certificate Generator</h1>
-                </div>
-                <p className="text-gray-600">Step 1 of {STEPS.length}: Select Event</p>
-              </div>
-            </div>
-
-            <div className="p-6 max-w-7xl mx-auto">
+            <StepHeader stepNum={1} title="Certificate Generator" />
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto">
               <SelectEventStep
                 events={events}
                 isLoading={isLoading}
@@ -273,33 +351,15 @@ export default function CertificatePage() {
           </>
         )}
 
-        {/* Step 2: Select Recipients */}
+        {/* ── Step 2: Select Recipients ────────────────────────────────────── */}
         {step === 2 && (
           <>
-            <div className="bg-white border-b border-gray-200 p-6">
-              <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Award className="w-7 h-7 text-blue-600" />
-                    <h1 className="text-3xl font-bold">Certificate Generator</h1>
-                  </div>
-                  <p className="text-gray-600">Step 2 of {STEPS.length}: Select Recipients</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setStep(1);
-                    setSelectedEvent(null);
-                    setRegistrations([]);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:border-blue-600 text-gray-700 hover:text-blue-600 transition"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 max-w-7xl mx-auto">
+            <StepHeader
+              stepNum={2}
+              title={`Recipients — ${selectedEvent?.title || 'Event'}`}
+              onBack={() => { setStep(1); setSelectedEvent(null); setRegistrations([]); }}
+            />
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto">
               <SelectRecipientsStep
                 event={selectedEvent}
                 registrations={registrations}
@@ -314,68 +374,38 @@ export default function CertificatePage() {
           </>
         )}
 
-        {/* Step 3: Select Template */}
+        {/* ── Step 3: Select Template ──────────────────────────────────────── */}
         {step === 3 && (
-          <div>
-            <div className="bg-white border-b border-gray-200 p-6">
-              <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Step 3 of {STEPS.length}</p>
-                  <h1 className="text-2xl font-bold">Choose Certificate Template</h1>
-                </div>
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:border-blue-600"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back
-                </button>
-              </div>
-            </div>
+          <>
+            <StepHeader stepNum={3} title="Choose Certificate Template" onBack={() => setStep(2)} />
             <TemplateSelection
               onSelectTemplate={handleSelectTemplate}
               onCustomStart={handleCustomStart}
               registrationCount={selectedRegistrations.length}
-              eventName={selectedEvent?.name}
+              eventName={selectedEvent?.title}  // ← title, not name
             />
-          </div>
+          </>
         )}
 
-        {/* Step 4: Template Editor */}
+        {/* ── Step 4: Canvas Editor ────────────────────────────────────────── */}
         {step === 4 && (
-          <CertificateTemplateEditor
+          <CanvasCertificateEditor
             template={template}
             event={selectedEvent}
             onSave={handleSaveTemplate}
             onBack={() => setStep(3)}
             isLoading={isLoading}
             registrationCount={selectedRegistrations.length}
+            registrations={registrations.filter((r) => selectedRegistrations.includes(r._id))}
+            eventName={selectedEvent?.title || ''}  // ← title, not name
           />
         )}
 
-        {/* Step 5: Send Certificates */}
+        {/* ── Step 5: Send Certificates ────────────────────────────────────── */}
         {step === 5 && (
           <>
-            <div className="bg-white border-b border-gray-200 p-6">
-              <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Award className="w-7 h-7 text-blue-600" />
-                    <h1 className="text-3xl font-bold">Certificate Generator</h1>
-                  </div>
-                  <p className="text-gray-600">Step {STEPS.length} of {STEPS.length}: Send Certificates</p>
-                </div>
-                <button
-                  onClick={() => setStep(4)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:border-blue-600 text-gray-700 hover:text-blue-600 transition"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 max-w-7xl mx-auto">
+            <StepHeader stepNum={5} title="Send Certificates" onBack={() => setStep(4)} />
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto">
               <SendCertificatesStep
                 event={selectedEvent}
                 registrationCount={selectedRegistrations.length}
@@ -385,6 +415,7 @@ export default function CertificatePage() {
                 onGenerateCertificates={handleGenerateCertificates}
                 onDownloadAll={handleDownloadAll}
                 onSendEmails={handleSendEmails}
+                showToast={showToast}
               />
             </div>
           </>
@@ -394,70 +425,116 @@ export default function CertificatePage() {
       {/* Toasts */}
       <div className="fixed top-4 right-4 space-y-2 z-50">
         {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
+          <Toast key={toast.id} message={toast.message} type={toast.type}
+            onClose={() => removeToast(toast.id)} />
         ))}
       </div>
     </div>
   );
 }
 
-// Step 1: Select Event
+// ── Step 1: Select Event ──────────────────────────────────────────────────────
+// FIX: was using event.name — Event model uses event.title
 function SelectEventStep({ events, isLoading, onSelectEvent }) {
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-        <p className="text-gray-600 mt-4 ml-4">Loading events...</p>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-10 h-10 rounded-full border-4 border-brand/30 border-t-brand animate-spin" />
+        <p className="text-gray-400">Loading your events…</p>
       </div>
     );
   }
 
   if (events.length === 0) {
     return (
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-        <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold mb-2">No Events Found</h3>
-        <p className="text-gray-600">Create an event first to generate certificates</p>
+      <div className="border-2 border-dashed border-border rounded-xl p-16 text-center mt-6">
+        <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold mb-2 text-white">No Events Found</h3>
+        <p className="text-gray-500">
+          You need at least one <strong>published</strong> event to generate certificates.
+        </p>
       </div>
     );
   }
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Select an Event</h2>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {events.map((event) => (
-          <div
-            key={event._id}
-            className="bg-white border border-gray-200 rounded-lg p-5 hover:border-blue-600 hover:shadow-lg cursor-pointer transition"
-            onClick={() => onSelectEvent(event)}
-          >
-            {event.eventImage && (
-              <img
-                src={event.eventImage}
-                alt={event.name}
-                className="w-full h-40 object-cover rounded mb-4"
-              />
-            )}
-            <h3 className="font-semibold text-lg mb-2">{event.name}</h3>
-            <p className="text-gray-600 text-sm mb-3">{event.description}</p>
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-              <span className="text-sm text-gray-500">{event.registrationCount} registrations</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white">Select an Event</h2>
+        <p className="text-gray-400 mt-1">Choose which event to issue certificates for</p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {events.map((event) => {
+          // ── KEY FIX: event.title (not event.name) ──────────────────────
+          const title    = event.title || 'Untitled Event';
+          const location = event.isOnline ? 'Online' : (event.venue || '—');
+          const dateStr  = event.date
+            ? new Date(event.date).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', year: 'numeric',
+              })
+            : 'Date TBA';
+
+          return (
+            <div
+              key={event._id}
+              onClick={() => onSelectEvent(event)}
+              className="group bg-surface-raised border border-border hover:border-brand rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:shadow-brand/10"
+            >
+              {/* Cover image or placeholder */}
+              {event.coverImage ? (
+                <img
+                  src={event.coverImage}
+                  alt={title}
+                  className="w-full h-36 object-cover"
+                />
+              ) : (
+                <div className="w-full h-36 bg-gradient-to-br from-brand/20 to-brand/5 flex items-center justify-center">
+                  <Award className="w-10 h-10 text-brand/40" />
+                </div>
+              )}
+
+              <div className="p-5">
+                {/* Title */}
+                <h3 className="font-bold text-white text-lg leading-snug mb-3 group-hover:text-brand transition-colors line-clamp-2">
+                  {title}
+                </h3>
+
+                {/* Meta */}
+                <div className="space-y-1.5 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-brand/60" />
+                    <span>{dateStr}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-brand/60" />
+                    <span className="truncate">{location}</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                    <Users className="w-3.5 h-3.5 text-brand/60" />
+                    <span>
+                      {event.registrationCount}{' '}
+                      {event.registrationCount === 1 ? 'registrant' : 'registrants'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-brand text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    Select <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// Step 2: Select Recipients
+// ── Step 2: Select Recipients ─────────────────────────────────────────────────
 function SelectRecipientsStep({
   event,
   registrations,
@@ -471,60 +548,72 @@ function SelectRecipientsStep({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <Loader className="animate-spin w-8 h-8 text-blue-600" />
+        <Loader className="animate-spin w-8 h-8 text-brand" />
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-2xl font-semibold mb-2">{event?.name}</h2>
-        <p className="text-gray-600">Select which registrants will receive certificates</p>
+    <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+      <div className="p-6 border-b border-border">
+        {/* FIX: event.title not event.name */}
+        <h2 className="text-xl font-bold text-white mb-1">{event?.title}</h2>
+        <p className="text-gray-400 text-sm">Select which registrants will receive certificates</p>
       </div>
 
       <div className="p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectAll}
-              onChange={onSelectAll}
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <span className="font-medium">Select All ({registrations.length})</span>
-          </label>
-          <span className="text-sm text-gray-600">
-            {selectedRegistrations.length} selected
-          </span>
-        </div>
+        {registrations.length === 0 ? (
+          <div className="text-center py-10">
+            <Users className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400">No registrations found for this event.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={onSelectAll}
+                  className="w-4 h-4 accent-brand rounded"
+                />
+                <span className="font-medium text-white text-sm">
+                  Select All ({registrations.length})
+                </span>
+              </label>
+              <span className="text-sm text-gray-400">
+                {selectedRegistrations.length} selected
+              </span>
+            </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-          {registrations.map((reg) => (
-            <label
-              key={reg._id}
-              className="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-            >
-              <input
-                type="checkbox"
-                checked={selectedRegistrations.includes(reg._id)}
-                onChange={() => onToggleRegistration(reg)}
-                className="w-4 h-4 rounded border-gray-300"
-              />
-              <div className="flex-1">
-                <p className="font-medium">{reg.name}</p>
-                <p className="text-sm text-gray-600">{reg.email}</p>
-              </div>
-            </label>
-          ))}
-        </div>
+            <div className="space-y-1 max-h-96 overflow-y-auto rounded-lg border border-border pr-1">
+              {registrations.map((reg) => (
+                <label
+                  key={reg._id}
+                  className="flex items-center gap-3 p-3 hover:bg-brand/5 cursor-pointer rounded-lg transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedRegistrations.includes(reg._id)}
+                    onChange={() => onToggleRegistration(reg)}
+                    className="w-4 h-4 accent-brand rounded flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white text-sm truncate">{reg.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{reg.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
 
         <button
           onClick={onContinue}
           disabled={selectedRegistrations.length === 0}
-          className="mt-6 w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+          className="mt-6 w-full px-6 py-3 bg-brand hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
         >
-          Continue to Certificate Design ({selectedRegistrations.length} recipient
+          Continue to Design ({selectedRegistrations.length} recipient
           {selectedRegistrations.length !== 1 ? 's' : ''})
         </button>
       </div>
@@ -532,7 +621,7 @@ function SelectRecipientsStep({
   );
 }
 
-// Step 5: Send Certificates
+// ── Step 5: Send Certificates ─────────────────────────────────────────────────
 function SendCertificatesStep({
   event,
   registrationCount,
@@ -542,39 +631,161 @@ function SendCertificatesStep({
   onGenerateCertificates,
   onDownloadAll,
   onSendEmails,
+  showToast,
 }) {
+  const [downloading, setDownloading] = React.useState(null);
+
+  // Helper function to wait for all images to load
+  const waitForImagesToLoad = async (container) => {
+    const images = container.querySelectorAll('img');
+    const promises = Array.from(images).map((img) => {
+      return new Promise((resolve, reject) => {
+        if (img.complete) {
+          resolve();
+        } else {
+          img.onload = resolve;
+          img.onerror = reject;
+          // Set a timeout to avoid infinite waiting
+          setTimeout(reject, 5000);
+        }
+      });
+    });
+    try {
+      await Promise.all(promises);
+    } catch (error) {
+      console.warn('Some images failed to load, proceeding anyway:', error);
+    }
+  };
+
+  const downloadSingleCertificate = async (certId, format) => {
+    try {
+      setDownloading(certId);
+      const response = await certificateAPI.downloadCertificatePDF(certId);
+      
+      if (!response.data.success) {
+        showToast('Failed to load certificate data', 'error');
+        return;
+      }
+
+      const { certificate, template, event } = response.data;
+
+      // Render certificate with proper styling
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '-9999px';
+      document.body.appendChild(container);
+
+      renderCertificateToDOM(
+        { name: certificate.recipientName, uniqueCode: certificate.uniqueCode },
+        container,
+        template,
+        { eventName: event.title, date: new Date(event.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) }
+      );
+
+      const html2canvas = (await import('html2canvas')).default;
+      const certCanvas = container.querySelector('[data-certificate-canvas]');
+
+      if (!certCanvas) {
+        throw new Error('Failed to render certificate');
+      }
+
+      // Wait for all images (QR codes, uploaded images) to load
+      await waitForImagesToLoad(certCanvas);
+
+      const canvas = await html2canvas(certCanvas, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        windowHeight: 744,
+        windowWidth: 1050,
+        logging: false,
+      });
+
+      if (format === 'pdf') {
+        const { jsPDF } = await import('jspdf');
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: [1050, 744],
+        });
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, 1050, 744);
+        pdf.save(response.data.fileName);
+        showToast('PDF downloaded successfully!', 'success');
+      } else if (format === 'jpg') {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.download = response.data.fileName.replace('.pdf', '.jpg');
+        link.click();
+        showToast('JPG downloaded successfully!', 'success');
+      }
+
+      document.body.removeChild(container);
+    } catch (error) {
+      showToast(`Failed to download ${format.toUpperCase()}: ${error.message}`, 'error');
+      console.error(error);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   if (generatedCertificates.length === 0) {
     return (
-      <div className="bg-white rounded-lg p-8">
-        <h2 className="text-2xl font-semibold mb-4">Generate & Send Certificates</h2>
-        <button
-          onClick={() => onGenerateCertificates(false)}
-          disabled={isGenerating}
-          className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition flex items-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader className="animate-spin w-4 h-4" />
-              Generating...
-            </>
-          ) : (
-            'Generate Certificates'
-          )}
-        </button>
+      <div className="bg-surface-raised border border-border rounded-xl p-8">
+        <h2 className="text-2xl font-bold text-white mb-2">Generate Certificates</h2>
+        <p className="text-gray-400 mb-6">
+          Ready to generate <strong className="text-white">{registrationCount}</strong>{' '}
+          certificate{registrationCount !== 1 ? 's' : ''} for{' '}
+          <strong className="text-white">{event?.title}</strong>.
+        </p>
+
+        {pricingInfo && (
+          <div className="p-4 bg-brand/5 border border-brand/20 rounded-lg mb-6 text-sm text-gray-300">
+            <p>💳 Free certificates remaining: <strong className="text-white">{pricingInfo.freeRemaining ?? '—'}</strong></p>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => onGenerateCertificates(false)}
+            disabled={isGenerating}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-light disabled:opacity-50 text-white font-semibold rounded-lg transition"
+          >
+            {isGenerating ? <Loader className="animate-spin w-4 h-4" /> : <Award className="w-4 h-4" />}
+            {isGenerating ? 'Generating…' : 'Generate (Download Only)'}
+          </button>
+          <button
+            onClick={() => onGenerateCertificates(true)}
+            disabled={isGenerating}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold rounded-lg transition"
+          >
+            {isGenerating ? <Loader className="animate-spin w-4 h-4" /> : <Mail className="w-4 h-4" />}
+            {isGenerating ? 'Generating…' : 'Generate & Email Instantly'}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg p-8">
-      <h2 className="text-2xl font-semibold mb-4">Certificates Generated!</h2>
-      <p className="text-gray-600 mb-6">{generatedCertificates.length} certificates ready to download or send</p>
+    <div className="bg-surface-raised border border-border rounded-xl p-8">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+          <Award className="w-5 h-5 text-green-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-white">
+          {generatedCertificates.length} Certificate{generatedCertificates.length !== 1 ? 's' : ''} Ready!
+        </h2>
+      </div>
+      <p className="text-gray-400 mb-8">Download or send them to your registrants via email.</p>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-8">
         <button
           onClick={onDownloadAll}
           disabled={isGenerating}
-          className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 disabled:bg-gray-400 transition"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-surface-overlay border border-border hover:border-brand text-white font-semibold rounded-lg transition disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
           Download All
@@ -582,11 +793,50 @@ function SendCertificatesStep({
         <button
           onClick={onSendEmails}
           disabled={isGenerating}
-          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
         >
-          <Mail className="w-4 h-4" />
-          Send via Email
+          {isGenerating ? <Loader className="animate-spin w-4 h-4" /> : <Mail className="w-4 h-4" />}
+          {isGenerating ? 'Sending…' : 'Send via Email'}
         </button>
+      </div>
+
+      {/* Certificate list */}
+      <div className="mt-8 space-y-3">
+        <p className="text-sm font-medium text-gray-400 mb-3">Generated certificates:</p>
+        {generatedCertificates.map((cert) => (
+          <div key={cert._id}
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-surface-overlay rounded-lg border border-border gap-3">
+            <div className="flex-1">
+              <p className="text-white font-medium">{cert.recipientName}</p>
+              <p className="text-gray-500 text-xs">{cert.recipientEmail}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => downloadSingleCertificate(cert._id, 'pdf')}
+                disabled={downloading === cert._id}
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded transition"
+              >
+                {downloading === cert._id ? <Loader className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                PDF
+              </button>
+              <button
+                onClick={() => downloadSingleCertificate(cert._id, 'jpg')}
+                disabled={downloading === cert._id}
+                className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-medium rounded transition"
+              >
+                {downloading === cert._id ? <Loader className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                JPG
+              </button>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                cert.emailStatus === 'sent'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {cert.emailStatus === 'sent' ? '✉ Sent' : 'Pending'}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

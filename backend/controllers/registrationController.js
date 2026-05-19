@@ -6,9 +6,24 @@ import { sendTicketConfirmationEmail } from '../services/emailService.js';
 import { exportRegistrationsToCSV } from '../services/csvService.js';
 import { generateTicketHTML } from '../services/ticketGenerator.js';
 
+// ─────────────────────────────────────────────────────────────
+//  POST /api/registrations
+//  Public — no auth required
+// ─────────────────────────────────────────────────────────────
 export const registerForEvent = async (req, res, next) => {
   try {
     const { eventId, name, email, phone, responses, consentPromoEmails } = req.body;
+
+    // ── Validate required fields early so the error is clear ──
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: 'eventId is required' });
+    }
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'name is required' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, message: 'email is required' });
+    }
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -22,60 +37,97 @@ export const registerForEvent = async (req, res, next) => {
 
     // Generate ticket ID and QR code
     const ticketId = generateTicketId();
-    const qrCode = await generateQRCode(ticketId);
+    const qrCode   = await generateQRCode(ticketId);
+
+    // ── Build responses Map ──────────────────────────────────
+    // responses from client is a plain object { fieldId: value }
+    // We strip it safely so the Map doesn't choke on non-string values.
+    const responsesMap = new Map();
+    if (responses && typeof responses === 'object') {
+      for (const [key, value] of Object.entries(responses)) {
+        responsesMap.set(String(key), String(value ?? ''));
+      }
+    }
+
+    // ── Handle file uploads from Cloudinary ──────────────────
+    const fileUploadsMap = new Map();
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach((file) => {
+        const fieldId = file.fieldname;
+        fileUploadsMap.set(fieldId, {
+          url: file.secure_url,
+          filename: file.original_filename,
+          size: file.bytes,
+          mimeType: file.mimetype || file.resource_type,
+          uploadedAt: new Date(),
+        });
+      });
+    }
 
     const registration = new Registration({
-      event: eventId,
+      event:    eventId,
       organizer: event.organizer,
       ticketId,
-      name,
-      email,
-      phone,
-      responses: new Map(Object.entries(responses || {})),
+      name:     name.trim(),
+      email:    email.trim().toLowerCase(),
+      phone:    phone ? phone.trim() : undefined,
+      responses: responsesMap,
+      fileUploads: fileUploadsMap,
       qrCode,
-      consentPromoEmails,
+      consentPromoEmails: consentPromoEmails !== false, // default true
       paymentStatus: event.isPaid ? 'pending' : 'free',
     });
 
     await registration.save();
 
-    // Update event registration count
-    event.currentRegistrations += 1;
-    await event.save();
+    // Increment event counter
+    await Event.findByIdAndUpdate(eventId, { $inc: { currentRegistrations: 1 } });
 
-    // Send confirmation email with professional ticket if enabled
+    // ── Send ticket email (only if organiser enabled it) ─────
     if (event.sendTicketEmails) {
-      try {
-        await sendTicketConfirmationEmail(email, {
-          eventTitle: event.title,
-          attendeeName: name,
+      // Fire-and-forget — registration never fails because of email
+      sendTicketConfirmationEmail(
+        email.trim().toLowerCase(),
+        {
+          eventTitle:    event.title,
+          attendeeName:  name.trim(),
           ticketId,
-          eventDate: event.date,
-          eventTime: event.time,
-          eventLocation: event.location,
-          phone: phone,
-          eventColor: event.brandColor || '#6C47FF',
-        }, qrCode);
-      } catch (emailError) {
-        console.error('Failed to send ticket email:', emailError);
-        // Don't fail registration if email fails
-      }
+          eventDate:     event.date,
+          eventTime:     event.time, // may be undefined — email handles it
+          eventLocation: event.venue || event.meetLink || 'TBA',
+          eventColor:    event.brandColor || '#6C47FF',
+        },
+        qrCode,
+      ).catch((emailError) => {
+        // Log but don't block the success response
+        console.error('⚠️  Ticket email failed (non-fatal):', emailError.message);
+      });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Registration successful',
       registration: {
         ticketId,
-        email,
+        name:  name.trim(),
+        email: email.trim().toLowerCase(),
         status: event.isPaid ? 'pending_payment' : 'confirmed',
       },
     });
   } catch (error) {
+    // Surface Mongoose validation errors clearly
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
     next(error);
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+//  GET /api/events/:eventId/registrations
+//  Protected — organiser only
+// ─────────────────────────────────────────────────────────────
 export const getEventRegistrations = async (req, res, next) => {
   try {
     const { eventId } = req.params;
@@ -86,18 +138,17 @@ export const getEventRegistrations = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Event not found' });
     }
 
-    // Check ownership
     if (event.organizer.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    const skip = (page - 1) * limit;
+    const skip  = (page - 1) * limit;
     const query = { event: eventId };
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+        { name:     { $regex: search, $options: 'i' } },
+        { email:    { $regex: search, $options: 'i' } },
         { ticketId: { $regex: search, $options: 'i' } },
       ];
     }
@@ -106,19 +157,20 @@ export const getEventRegistrations = async (req, res, next) => {
       query.checkedIn = checkedIn === 'true';
     }
 
-    const registrations = await Registration.find(query)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ registeredAt: -1 });
+    const [registrations, total] = await Promise.all([
+      Registration.find(query)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .sort({ registeredAt: -1 }),
+      Registration.countDocuments(query),
+    ]);
 
-    const total = await Registration.countDocuments(query);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       registrations,
       pagination: {
         total,
-        page: parseInt(page),
+        page:  parseInt(page),
         limit: parseInt(limit),
         pages: Math.ceil(total / limit),
       },
@@ -128,6 +180,10 @@ export const getEventRegistrations = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+//  PATCH /api/registrations/checkin/:ticketId
+//  Protected — organiser only
+// ─────────────────────────────────────────────────────────────
 export const checkInAttendee = async (req, res, next) => {
   try {
     const { ticketId } = req.params;
@@ -137,22 +193,25 @@ export const checkInAttendee = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
 
-    // Check ownership
     if (registration.organizer.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    registration.checkedIn = true;
+    if (registration.checkedIn) {
+      return res.status(400).json({ success: false, message: 'Attendee already checked in' });
+    }
+
+    registration.checkedIn   = true;
     registration.checkedInAt = new Date();
     await registration.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Attendee checked in successfully',
       attendee: {
-        name: registration.name,
-        email: registration.email,
-        checkedIn: true,
+        name:        registration.name,
+        email:       registration.email,
+        checkedIn:   true,
         checkedInAt: registration.checkedInAt,
       },
     });
@@ -161,6 +220,10 @@ export const checkInAttendee = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+//  GET /api/registrations/ticket/:ticketId/download
+//  Public — anyone with ticketId can download
+// ─────────────────────────────────────────────────────────────
 export const downloadTicket = async (req, res, next) => {
   try {
     const { ticketId } = req.params;
@@ -171,40 +234,39 @@ export const downloadTicket = async (req, res, next) => {
     }
 
     const event = registration.event;
-    
-    // Format time from date if available
+
     let eventTime = '';
     if (event.date) {
-      const date = new Date(event.date);
-      eventTime = date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
+      eventTime = new Date(event.date).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
       });
     }
 
     const ticketHTML = generateTicketHTML({
-      ticketId: registration.ticketId,
-      attendeeName: registration.name,
-      eventTitle: event.title,
-      eventDate: event.date,
-      eventTime: eventTime,
-      eventLocation: event.venue || event.meetLink || 'TBA',
-      qrCodeBase64: registration.qrCode,
-      phone: registration.phone,
-      email: registration.email,
-      eventColor: '#6C47FF',
+      ticketId:       registration.ticketId,
+      attendeeName:   registration.name,
+      eventTitle:     event.title,
+      eventDate:      event.date,
+      eventTime,
+      eventLocation:  event.venue || event.meetLink || 'TBA',
+      qrCodeBase64:   registration.qrCode,
+      phone:          registration.phone,
+      email:          registration.email,
+      eventColor:     event.brandColor || '#6C47FF',
     });
 
-    // Send as HTML file
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="ticket-${ticketId}.html"`);
-    res.send(ticketHTML);
+    return res.send(ticketHTML);
   } catch (error) {
     next(error);
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+//  GET /api/registrations/ticket/:ticketId
+//  Public
+// ─────────────────────────────────────────────────────────────
 export const getTicketDetails = async (req, res, next) => {
   try {
     const { ticketId } = req.params;
@@ -215,33 +277,29 @@ export const getTicketDetails = async (req, res, next) => {
     }
 
     const event = registration.event;
-    
-    // Format time from date if available
+
     let eventTime = '';
     if (event.date) {
-      const date = new Date(event.date);
-      eventTime = date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
+      eventTime = new Date(event.date).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       ticket: {
-        ticketId: registration.ticketId,
-        attendeeName: registration.name,
-        email: registration.email,
-        phone: registration.phone,
-        eventTitle: event.title,
-        eventDate: event.date,
-        eventTime: eventTime,
+        ticketId:      registration.ticketId,
+        attendeeName:  registration.name,
+        email:         registration.email,
+        phone:         registration.phone,
+        eventTitle:    event.title,
+        eventDate:     event.date,
+        eventTime,
         eventLocation: event.venue || event.meetLink || 'TBA',
-        qrCode: registration.qrCode,
-        checkedIn: registration.checkedIn,
-        checkedInAt: registration.checkedInAt,
-        registeredAt: registration.registeredAt,
+        qrCode:        registration.qrCode,
+        checkedIn:     registration.checkedIn,
+        checkedInAt:   registration.checkedInAt,
+        registeredAt:  registration.registeredAt,
       },
     });
   } catch (error) {
@@ -249,7 +307,10 @@ export const getTicketDetails = async (req, res, next) => {
   }
 };
 
-
+// ─────────────────────────────────────────────────────────────
+//  GET /api/events/:eventId/registrations/export
+//  Protected — organiser only
+// ─────────────────────────────────────────────────────────────
 export const exportRegistrationsCSV = async (req, res, next) => {
   try {
     const { eventId } = req.params;
@@ -259,19 +320,15 @@ export const exportRegistrationsCSV = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Event not found' });
     }
 
-    // Check ownership
     if (event.organizer.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
     const registrations = await Registration.find({ event: eventId });
-
-    const filePath = await exportRegistrationsToCSV(registrations, event.title, event.formSections);
+    const filePath      = await exportRegistrationsToCSV(registrations, event.title, event.formSections);
 
     res.download(filePath, `${event.title}-registrations.csv`, (err) => {
-      if (err) {
-        console.error('Error downloading file:', err);
-      }
+      if (err) console.error('❌ CSV download error:', err);
     });
   } catch (error) {
     next(error);

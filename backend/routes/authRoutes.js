@@ -1,11 +1,14 @@
 import express from 'express';
 import { z } from 'zod';
-import { register, login, me, forgotPassword, resetPassword, verifyEmail } from '../controllers/authController.js';
+import { register, login, me, forgotPassword, resetPassword, verifyEmail, uploadProfilePhoto } from '../controllers/authController.js';
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import { getProfilePhotoUploader } from '../services/cloudinaryService.js';
 
 const router = express.Router();
+
+const profilePhotoUploader = getProfilePhotoUploader();
 
 // Validation schemas
 const registerSchema = z.object({
@@ -36,5 +39,8 @@ router.get('/me', auth, me);
 router.post('/forgot-password', validateSchema(forgotPasswordSchema), forgotPassword);
 router.post('/reset-password/:token', validateSchema(resetPasswordSchema), resetPassword);
 router.get('/verify-email/:token', verifyEmail);
+
+// Profile photo upload to Cloudinary
+router.post('/upload-profile-photo', auth, profilePhotoUploader.single('profilePhoto'), uploadProfilePhoto);
 
 export default router;

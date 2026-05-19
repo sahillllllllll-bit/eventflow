@@ -41,21 +41,21 @@ const PayoutsPage = () => {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       
-      <div className="ml-60 min-h-screen">
+      <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-6">
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold">Payouts & Earnings</h1>
-            <p className="text-gray-400 mt-1">Track your event revenue and platform fees</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Payouts & Earnings</h1>
+            <p className="text-gray-400 mt-1 text-sm">Track your event revenue and platform fees</p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           {payout ? (
             <>
               {/* Earnings Summary */}
-              <div className="grid md:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
                   <div className="flex items-start justify-between">
                     <div>

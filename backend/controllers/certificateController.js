@@ -13,6 +13,7 @@ import {
   getOrCreatePricing,
 } from '../services/certificateService.js';
 import { CertificateTemplate, CertificateIssued } from '../models/Certificate.js';
+import Event from '../models/Event.js';
 
 import { sendVerificationEmail, sendTicketConfirmationEmail } from '../services/emailService.js';
 
@@ -41,41 +42,51 @@ export const getEventRegistrationsHandler = async (req, res) => {
 // Create certificate template
 export const createTemplate = async (req, res) => {
   try {
-    const { eventId, ...templateData } = req.body;
-    const organizerId = req.user._id;
-
-    // Validate required fields
+    const { eventId, _id, id, ...templateData } = req.body;
+ 
+    // ✅ Guard: ensure auth middleware populated req.user correctly
+    const organizerId = req.user?._id;
+ 
+    if (!organizerId) {
+      console.error('req.user is:', req.user); // helps debug
+      return res.status(401).json({
+        error: 'Not authenticated. Please log in again.',
+        field: 'organizerId',
+      });
+    }
+ 
     if (!eventId) {
       return res.status(400).json({ error: 'Event ID is required', field: 'eventId' });
     }
-
-    if (!templateData.templateName || templateData.templateName.trim() === '') {
+ 
+    if (!templateData.templateName?.trim()) {
       return res.status(400).json({ error: 'Template name is required', field: 'templateName' });
     }
-
-    if (!organizerId) {
-      return res.status(400).json({ error: 'Organizer ID is required', field: 'organizerId' });
-    }
-
-    console.log('Creating template:', {
-      templateName: templateData.templateName,
+ 
+    const { designConfig, customElements, ...rest } = templateData;
+ 
+    const merged = {
+      ...rest,
       eventId,
       organizerId,
-    });
-
-    const template = await createCertificateTemplate({
-      ...templateData,
-      eventId,
-      organizerId,
-    });
-
-    console.log('Template created:', template._id);
+      customElements: customElements || [],
+      backgroundColor: designConfig?.backgroundColor || rest.backgroundColor || '#ffffff',
+      backgroundGradient: designConfig?.backgroundGradient || rest.backgroundGradient || null,
+      borderStyle: designConfig?.borderStyle || rest.borderStyle || 'elegant',
+      borderColor: designConfig?.borderColor || rest.borderColor || '#3B82F6',
+      borderWidth: designConfig?.borderWidth || rest.borderWidth || 8,
+      designConfig: designConfig || null,
+    };
+ 
+    console.log('Creating template for organizer:', organizerId, 'event:', eventId);
+ 
+    const template = await createCertificateTemplate(merged);
     res.status(201).json(template);
   } catch (error) {
     console.error('Template creation error:', error);
-    res.status(400).json({ 
+    res.status(400).json({
       error: error.message || 'Failed to create template',
-      details: error.errors ? Object.keys(error.errors) : undefined
+      details: error.errors ? Object.keys(error.errors) : undefined,
     });
   }
 };
@@ -84,7 +95,24 @@ export const createTemplate = async (req, res) => {
 export const updateTemplate = async (req, res) => {
   try {
     const { templateId } = req.params;
-    const template = await updateCertificateTemplate(templateId, req.body);
+    const { designConfig, customElements, ...rest } = req.body;
+ 
+    const updates = {
+      ...rest,
+      customElements: customElements ?? undefined,
+      backgroundColor: designConfig?.backgroundColor || rest.backgroundColor,
+      backgroundGradient: designConfig?.backgroundGradient || rest.backgroundGradient || null,
+      borderStyle: designConfig?.borderStyle || rest.borderStyle,
+      borderColor: designConfig?.borderColor || rest.borderColor,
+      borderWidth: designConfig?.borderWidth || rest.borderWidth,
+      designConfig: designConfig || undefined,
+      updatedAt: new Date(),
+    };
+ 
+    // Remove undefined keys so we don't overwrite existing fields with undefined
+    Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
+ 
+    const template = await updateCertificateTemplate(templateId, updates);
     res.json(template);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -208,26 +236,52 @@ export const getIssuedCertificatesHandler = async (req, res) => {
 export const downloadCertificatePDF = async (req, res) => {
   try {
     const { certificateId } = req.params;
-    const cert = await CertificateIssued.findById(certificateId);
+    const cert = await CertificateIssued.findById(certificateId)
+      .populate('templateId')
+      .populate('eventId');
 
     if (!cert) {
       return res.status(404).json({ error: 'Certificate not found' });
     }
 
-    const template = await getCertificateTemplate(cert.templateId);
-    const html = generateCertificateHTML(template, cert.recipientName, {
-      eventName: cert.certificateData?.eventName,
-      uniqueCode: cert.uniqueCode,
-    });
+    if (!cert.templateId) {
+      return res.status(404).json({ error: 'Certificate template not found' });
+    }
 
-    // Update download count
-    cert.downloadCount += 1;
-    cert.lastDownloadedAt = new Date();
-    await cert.save();
+    if (!cert.eventId) {
+      return res.status(404).json({ error: 'Certificate event not found' });
+    }
 
-    // Return HTML for client-side PDF generation
+    const template = cert.templateId;
+    const event = cert.eventId;
+
+    // Return complete certificate data with template for client-side rendering
     res.json({
-      html,
+      success: true,
+      certificate: {
+        _id: cert._id,
+        recipientName: cert.recipientName,
+        recipientEmail: cert.recipientEmail,
+        uniqueCode: cert.uniqueCode,
+        certificateData: cert.certificateData,
+      },
+      template: {
+        _id: template._id,
+        templateName: template.templateName,
+        backgroundColor: template.backgroundColor,
+        backgroundGradient: template.backgroundGradient,
+        borderStyle: template.borderStyle,
+        borderColor: template.borderColor,
+        borderWidth: template.borderWidth,
+        customElements: template.customElements,
+        designConfig: template.designConfig,
+        organizerName: template.organizerName,
+      },
+      event: {
+        _id: event._id,
+        title: event.title,
+        date: event.date,
+      },
       fileName: `certificate-${cert.recipientName.replace(/\s+/g, '-')}-${cert.uniqueCode}.pdf`,
     });
   } catch (error) {
@@ -318,6 +372,66 @@ export const deleteTemplate = async (req, res) => {
     await CertificateTemplate.findByIdAndDelete(templateId);
 
     res.json({ success: true, message: 'Template deleted' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const uploadCertificateLogo = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const template = await CertificateTemplate.findOne({
+      _id: templateId,
+      organizerId: req.user._id,
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    template.logo = req.file.secure_url;
+    await template.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Logo uploaded successfully',
+      logo: req.file.secure_url,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const uploadCertificateSignature = async (req, res) => {
+  try {
+    const { templateId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const template = await CertificateTemplate.findOne({
+      _id: templateId,
+      organizerId: req.user._id,
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    template.organizerSignature = req.file.secure_url;
+    await template.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Signature uploaded successfully',
+      signature: req.file.secure_url,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

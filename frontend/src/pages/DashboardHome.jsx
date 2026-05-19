@@ -70,26 +70,27 @@ const DashboardHome = () => {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       
-      <div className="ml-60 min-h-screen">
+      <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}, {user?.name?.split(' ')[0]}! 👋</h1>
-              <p className="text-gray-400 mt-1">{user?.college}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold">Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}, {user?.name?.split(' ')[0]}! 👋</h1>
+              <p className="text-gray-400 mt-1 text-sm">{user?.college}</p>
             </div>
             <button
               onClick={() => navigate('/dashboard/events/create')}
-              className="flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition text-sm sm:text-base whitespace-nowrap"
             >
               <Plus className="w-5 h-5" />
-              Create Event
+              <span className="hidden sm:inline">Create Event</span>
+              <span className="sm:hidden">New</span>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           {/* Metrics */}
           <div className="grid md:grid-cols-4 gap-4 mb-8">
             <MetricCard
@@ -155,6 +156,7 @@ const DashboardHome = () => {
                 {events.map((event) => (
                   <EventCard
                     key={event._id}
+                    onClick={() => navigate(`/dashboard/events/${event._id}`)}
                     event={event}
                     onDelete={(id) => setDeleteModal({ open: true, eventId: id })}
                     onShare={(e) => {

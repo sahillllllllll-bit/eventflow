@@ -40,7 +40,7 @@ const LoginPage = () => {
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <Zap className="w-12 h-12 text-brand" />
-            <span className="text-4xl font-bold">EventFlow</span>
+            <span className="text-4xl font-bold">EventGlow</span>
           </div>
           <p className="text-xl text-gray-300 max-w-md">
             Manage your college events with ease. Create, promote, and track everything in one place.

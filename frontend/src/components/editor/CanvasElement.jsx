@@ -55,6 +55,15 @@ export default function CanvasElement({
       };
     }
 
+    if (element.type === 'qrcode') {
+      return {
+        ...base,
+        width: `${element.width || 30}%`,
+        height: `${element.height || 30}%`,
+        overflow: 'hidden',
+      };
+    }
+
     if (element.type === 'shape') {
       return {
         ...base,
@@ -84,6 +93,19 @@ export default function CanvasElement({
           src={element.src}
           alt="Canvas element"
           className="w-full h-full object-cover"
+          style={{
+            borderRadius: `${element.borderRadius || 0}px`,
+          }}
+        />
+      );
+    }
+
+    if (element.type === 'qrcode' && element.src) {
+      return (
+        <img
+          src={element.src}
+          alt="QR Code"
+          className="w-full h-full object-contain"
           style={{
             borderRadius: `${element.borderRadius || 0}px`,
           }}

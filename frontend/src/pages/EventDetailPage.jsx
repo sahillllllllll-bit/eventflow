@@ -23,6 +23,8 @@ const EventDetailPage = () => {
   const [teamRole, setTeamRole] = useState('coordinator');
   const [reminderMessage, setReminderMessage] = useState('');
   const [sendingReminder, setSendingReminder] = useState(false);
+  const [exportingCSV, setExportingCSV] = useState(false); // ← NEW
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchEventData();
@@ -108,22 +110,109 @@ const EventDetailPage = () => {
     }
   };
 
+  // ─── FIXED CSV Export ────────────────────────────────────────────────────
   const handleExportCSV = async () => {
     try {
-      const response = await registrationAPI.exportCSV(id);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      setExportingCSV(true);
+
+      // Try API export first
+      try {
+        const response = await registrationAPI.exportCSV(id, {
+          responseType: 'blob', // ← critical: tell axios to return raw binary
+        });
+
+        // Determine blob — response.data might already be a Blob or raw text
+        const blob = response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `registrations-${event?.title || id}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        showToast('CSV exported successfully', 'success');
+        return;
+      } catch (apiError) {
+        console.warn('API CSV export failed, building client-side CSV:', apiError);
+      }
+
+      // ── Fallback: build CSV from already-loaded registrations ──────────
+      // Fetch ALL registrations (no page limit) for export
+      const regRes = await registrationAPI.getEventRegistrations(id, { limit: 10000 });
+      const allRegs = regRes.data.registrations || regRes.data || [];
+
+      if (!allRegs.length) {
+        showToast('No registrations to export', 'error');
+        return;
+      }
+
+      // Collect all unique field keys from all registrations
+      // This handles custom form fields automatically
+      const allKeys = Array.from(
+        new Set(
+          allRegs.flatMap((reg) => {
+            const base = ['name', 'email', 'phone', 'ticketId', 'checkedIn', 'registeredAt'];
+            // Include any custom form field answers
+            const customKeys = reg.formAnswers
+              ? Object.keys(reg.formAnswers).map((k) => `field_${k}`)
+              : [];
+            return [...base, ...customKeys];
+          })
+        )
+      );
+
+      // Build CSV rows
+      const escape = (val) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        // Wrap in quotes if contains comma, quote, or newline
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const getValue = (reg, key) => {
+        if (key.startsWith('field_')) {
+          const fieldKey = key.replace('field_', '');
+          return reg.formAnswers?.[fieldKey] ?? '';
+        }
+        if (key === 'checkedIn') return reg.checkedIn ? 'Yes' : 'No';
+        if (key === 'registeredAt') return reg.registeredAt ? new Date(reg.registeredAt).toLocaleString() : '';
+        return reg[key] ?? '';
+      };
+
+      const header = allKeys.map(escape).join(',');
+      const rows = allRegs.map((reg) =>
+        allKeys.map((key) => escape(getValue(reg, key))).join(',')
+      );
+
+      const csvContent = [header, ...rows].join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      // ↑ \uFEFF = BOM so Excel opens with correct encoding
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `registrations-${event.title}.csv`);
+      link.setAttribute('download', `registrations-${event?.title || id}.csv`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      showToast('CSV exported successfully', 'success');
+      window.URL.revokeObjectURL(url);
+
+      showToast(`Exported ${allRegs.length} registrations`, 'success');
     } catch (error) {
+      console.error('CSV export error:', error);
       showToast('Failed to export CSV', 'error');
-      console.error(error);
+    } finally {
+      setExportingCSV(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (loading && !event) {
     return (
@@ -199,7 +288,6 @@ const EventDetailPage = () => {
                 <StatusBadge status={event.status} />
               </div>
             </div>
-            <p className="text-gray-300 max-w-2xl">{event.description}</p>
           </div>
         </div>
 
@@ -210,6 +298,10 @@ const EventDetailPage = () => {
               <button
                 key={tab.id}
                 onClick={() => {
+                  if (tab.id === 'checkin') {
+                    navigate(`/checkin/${id}`);
+                    return;
+                  }
                   setActiveTab(tab.id);
                   setPage(1);
                 }}
@@ -398,7 +490,7 @@ const EventDetailPage = () => {
                     </form>
                   </div>
 
-                  <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
+                  {/* <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
                     <h3 className="font-semibold mb-4">Invite by email</h3>
                     <a
                       href={`mailto:?subject=${encodeURIComponent(`Join the ${event.title} team`)}&body=${encodeURIComponent(`You have been invited to help manage the event "${event.title}". View the dashboard here: ${window.location.origin}/dashboard/events/${id}`)}`}
@@ -406,7 +498,7 @@ const EventDetailPage = () => {
                     >
                       Open mail client
                     </a>
-                  </div>
+                  </div> */}
                 </aside>
               </div>
 
@@ -515,18 +607,37 @@ const EventDetailPage = () => {
             </div>
           )}
 
-          {/* Export Tab */}
+          {/* Export Tab — FIXED */}
           {activeTab === 'export' && (
-            <div className="p-12 text-center border-2 border-dashed border-surface-overlay rounded-lg">
-              <Download className="w-12 h-12 text-brand mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Export Registration Data</h3>
-              <p className="text-gray-400 mb-6">Download all registrations as a CSV file</p>
-              <button
-                onClick={handleExportCSV}
-                className="px-6 py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition"
-              >
-                Download CSV
-              </button>
+            <div className="space-y-6">
+              <div className="p-12 text-center border-2 border-dashed border-surface-overlay rounded-lg">
+                <Download className="w-12 h-12 text-brand mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Export Registration Data</h3>
+                <p className="text-gray-400 mb-2">
+                  Download all registrations as a CSV file — includes name, email, phone, ticket ID,
+                  check-in status, registration date, and all custom form fields.
+                </p>
+                <p className="text-gray-500 text-sm mb-6">
+                  {event.currentRegistrations} total registrations
+                </p>
+                <button
+                  onClick={handleExportCSV}
+                  disabled={exportingCSV}
+                  className="px-6 py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition disabled:opacity-50 flex items-center gap-2 mx-auto"
+                >
+                  {exportingCSV ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={18} />
+                      Download CSV
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </div>

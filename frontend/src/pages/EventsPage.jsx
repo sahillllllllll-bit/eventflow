@@ -63,25 +63,26 @@ const EventsPage = () => {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       
-      <div className="ml-60 min-h-screen">
+      <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <h1 className="text-3xl font-bold">My Events</h1>
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">My Events</h1>
             <button
               onClick={() => navigate('/dashboard/events/create')}
-              className="flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition text-sm sm:text-base whitespace-nowrap"
             >
               <Plus className="w-5 h-5" />
-              Create Event
+              <span className="hidden sm:inline">Create Event</span>
+              <span className="sm:hidden">New</span>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           {/* Search and Filters */}
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
               <input
@@ -137,6 +138,7 @@ const EventsPage = () => {
                 {filteredEvents.map((event) => (
                   <EventCard
                     key={event._id}
+                     onClick={() => navigate(`/dashboard/events/${event._id}`)}
                     event={event}
                     onDelete={(id) => setDeleteModal({ open: true, eventId: id })}
                     onShare={(e) => {
@@ -201,6 +203,7 @@ const EventsPage = () => {
         {toasts.map((toast) => (
           <Toast
             key={toast.id}
+            onClick={() => navigate(`/dashboard/events/${event._id}`)}
             message={toast.message}
             type={toast.type}
             onClose={() => removeToast(toast.id)}

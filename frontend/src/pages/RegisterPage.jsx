@@ -64,7 +64,7 @@ const RegisterPage = () => {
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <Zap className="w-12 h-12 text-brand" />
-            <span className="text-4xl font-bold">EventFlow</span>
+            <span className="text-4xl font-bold">EventGlow</span>
           </div>
           <p className="text-xl text-gray-300 max-w-md">
             Start managing your college events today. It takes less than 2 minutes to set up.
@@ -76,7 +76,7 @@ const RegisterPage = () => {
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 md:px-12">
         <div className="max-w-md mx-auto w-full">
           <h1 className="text-4xl font-bold mb-2">Create Account</h1>
-          <p className="text-gray-400 mb-8">Join EventFlow to create amazing events</p>
+          <p className="text-gray-400 mb-8">Join EventGlow to create amazing events</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {formError && (

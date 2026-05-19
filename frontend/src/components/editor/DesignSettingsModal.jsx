@@ -1,220 +1,171 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-const BORDER_PRESETS = [
-  { id: 'none', name: 'None', style: 'none' },
-  { id: 'simple', name: 'Simple', style: 'solid' },
-  { id: 'elegant', name: 'Elegant', style: 'double' },
-  { id: 'modern', name: 'Modern', style: 'dashed' },
-  { id: 'thick', name: 'Thick Gold', style: 'solid' },
+const BORDER_STYLES = [
+  { id: 'none', label: 'None' },
+  { id: 'simple', label: 'Simple' },
+  { id: 'elegant', label: 'Elegant Double' },
+  { id: 'thick', label: 'Thick' },
+  { id: 'double', label: 'Double' },
+  { id: 'modern', label: 'Modern (T+B)' },
+  { id: 'shadow', label: 'Shadow' },
 ];
 
-const BG_PATTERNS = [
-  { id: 'solid', name: 'Solid', type: 'solid' },
-  { id: 'cream', name: 'Cream', type: 'solid', value: '#FFFDD0' },
-  { id: 'gold-gradient', name: 'Gold Gradient', type: 'gradient' },
-  { id: 'blue-gradient', name: 'Blue Gradient', type: 'gradient' },
-  { id: 'green-gradient', name: 'Green Gradient', type: 'gradient' },
+const BG_PRESETS = [
+  { label: 'White', value: '#FFFFFF', gradient: null },
+  { label: 'Cream', value: '#FFFDD0', gradient: null },
+  { label: 'Light Gray', value: '#F5F5F5', gradient: null },
+  { label: 'Gold Gradient', value: '#FFF8DC', gradient: 'linear-gradient(135deg, #fff8dc 0%, #ffd700 100%)' },
+  { label: 'Elegant Dark', value: '#1a1a2e', gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
+  { label: 'Blue Gradient', value: '#667eea', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+  { label: 'Green Forest', value: '#0f3d1f', gradient: 'linear-gradient(135deg, #0f3d1f 0%, #1a6b3f 100%)' },
+  { label: 'Rose Gold', value: '#f8d7d7', gradient: 'linear-gradient(135deg, #f8d7d7 0%, #c9a8a8 100%)' },
+  { label: 'Navy', value: '#1e3a5f', gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%)' },
 ];
 
-/**
- * Design Settings Modal
- * Configure certificate background, borders, and overall design
- */
 export default function DesignSettingsModal({ store, storeState, onClose }) {
   const { designConfig } = storeState;
-
-  const handleUpdate = (updates) => {
-    store.updateDesignConfig(updates);
-  };
+  const update = (updates) => store.getState().updateDesignConfig(updates);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 border border-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[85vh] overflow-y-auto border border-gray-700">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-5 border-b border-gray-700">
           <h2 className="text-lg font-bold text-white">Design Settings</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-700 rounded">
-            <X size={20} />
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition">
+            <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          {/* Background Color */}
+        <div className="p-5 space-y-6">
+          {/* Background */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-3">Background</h3>
-            <div className="space-y-3">
-              <label className="block text-xs text-gray-300">Background Color</label>
+            <p className="text-sm font-semibold text-gray-300 mb-3">Background</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {BG_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  onClick={() => update({ backgroundColor: preset.value, backgroundGradient: preset.gradient })}
+                  className={`p-2 rounded border transition text-xs text-center ${
+                    designConfig.backgroundColor === preset.value
+                      ? 'border-blue-500 ring-1 ring-blue-500'
+                      : 'border-gray-600 hover:border-gray-400'
+                  }`}
+                  style={{
+                    background: preset.gradient || preset.value,
+                    color: preset.value.startsWith('#1') || preset.value.startsWith('#0') ? '#fff' : '#333',
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Custom Color</p>
               <div className="flex gap-2">
                 <input
                   type="color"
                   value={designConfig.backgroundColor || '#FFFFFF'}
-                  onChange={(e) => handleUpdate({ backgroundColor: e.target.value })}
-                  className="w-12 h-10 rounded cursor-pointer"
+                  onChange={(e) => update({ backgroundColor: e.target.value, backgroundGradient: null })}
+                  className="w-10 h-9 rounded cursor-pointer border-0"
                 />
                 <input
                   type="text"
                   value={designConfig.backgroundColor || '#FFFFFF'}
-                  onChange={(e) => handleUpdate({ backgroundColor: e.target.value })}
-                  className="flex-1 px-3 py-1 bg-gray-700 text-white rounded text-xs border border-gray-600"
+                  onChange={(e) => update({ backgroundColor: e.target.value, backgroundGradient: null })}
+                  className="flex-1 bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded"
                 />
               </div>
-
-              {/* Background Patterns */}
-              <div>
-                <label className="block text-xs text-gray-300 mb-2">Pattern</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {BG_PATTERNS.map((pattern) => (
-                    <button
-                      key={pattern.id}
-                      onClick={() => handleUpdate({ backgroundPattern: pattern.id })}
-                      className={`px-3 py-2 rounded text-xs font-medium transition ${
-                        designConfig.backgroundPattern === pattern.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      {pattern.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            </div>
+            <div className="mt-2">
+              <p className="text-xs text-gray-400 mb-1">Custom Gradient CSS</p>
+              <input
+                type="text"
+                value={designConfig.backgroundGradient || ''}
+                onChange={(e) => update({ backgroundGradient: e.target.value || null })}
+                placeholder="linear-gradient(135deg, #fff 0%, #ccc 100%)"
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded"
+              />
             </div>
           </div>
 
-          {/* Border Settings */}
-          <div className="border-t border-gray-700 pt-6">
-            <h3 className="text-sm font-semibold text-white mb-3">Border</h3>
-            <div className="space-y-3">
-              {/* Border Style */}
-              <div>
-                <label className="block text-xs text-gray-300 mb-2">Style</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {BORDER_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      onClick={() => handleUpdate({ borderStyle: preset.id })}
-                      className={`px-3 py-2 rounded text-xs font-medium transition ${
-                        designConfig.borderStyle === preset.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Border Color */}
-              <div>
-                <label className="block text-xs text-gray-300 mb-2">Color</label>
+          {/* Border */}
+          <div>
+            <p className="text-sm font-semibold text-gray-300 mb-3">Border</p>
+            <div className="grid grid-cols-4 gap-1 mb-3">
+              {BORDER_STYLES.map(bs => (
+                <button
+                  key={bs.id}
+                  onClick={() => update({ borderStyle: bs.id })}
+                  className={`py-1.5 px-2 text-xs rounded transition ${
+                    designConfig.borderStyle === bs.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {bs.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <p className="text-xs text-gray-400 mb-1">Color</p>
                 <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={designConfig.borderColor || '#D4A574'}
-                    onChange={(e) => handleUpdate({ borderColor: e.target.value })}
-                    className="w-12 h-10 rounded cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={designConfig.borderColor || '#D4A574'}
-                    onChange={(e) => handleUpdate({ borderColor: e.target.value })}
-                    className="flex-1 px-3 py-1 bg-gray-700 text-white rounded text-xs border border-gray-600"
-                  />
+                  <input type="color" value={designConfig.borderColor || '#D4A574'}
+                    onChange={(e) => update({ borderColor: e.target.value })}
+                    className="w-9 h-9 rounded cursor-pointer border-0" />
+                  <input type="text" value={designConfig.borderColor || '#D4A574'}
+                    onChange={(e) => update({ borderColor: e.target.value })}
+                    className="flex-1 bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded" />
                 </div>
               </div>
-
-              {/* Border Width */}
               <div>
-                <label className="block text-xs text-gray-300 mb-2">
-                  Width: {designConfig.borderWidth || 8}px
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="30"
-                  value={designConfig.borderWidth || 8}
-                  onChange={(e) => handleUpdate({ borderWidth: parseInt(e.target.value) })}
-                  className="w-full"
-                />
+                <p className="text-xs text-gray-400 mb-1">Width</p>
+                <input type="number" min={1} max={40} value={designConfig.borderWidth || 8}
+                  onChange={(e) => update({ borderWidth: Number(e.target.value) })}
+                  className="w-20 bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded" />
               </div>
             </div>
           </div>
 
-          {/* Canvas Dimensions */}
-          <div className="border-t border-gray-700 pt-6">
-            <h3 className="text-sm font-semibold text-white mb-3">Canvas Size</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-gray-300 mb-2">
-                  Width: {designConfig.width}px
-                </label>
-                <input
-                  type="range"
-                  min="800"
-                  max="2000"
-                  value={designConfig.width || 1050}
-                  onChange={(e) => handleUpdate({ width: parseInt(e.target.value) })}
-                  className="w-full"
-                />
+          {/* Canvas Size */}
+          <div>
+            <p className="text-sm font-semibold text-gray-300 mb-3">Canvas Size</p>
+            <div className="flex gap-3 mb-2">
+              <div className="flex-1">
+                <p className="text-xs text-gray-400 mb-1">Width (px)</p>
+                <input type="number" min={400} max={3000} value={designConfig.width || 1050}
+                  onChange={(e) => update({ width: Number(e.target.value) })}
+                  className="w-full bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded" />
               </div>
-              <div>
-                <label className="block text-xs text-gray-300 mb-2">
-                  Height: {designConfig.height}px
-                </label>
-                <input
-                  type="range"
-                  min="600"
-                  max="1200"
-                  value={designConfig.height || 744}
-                  onChange={(e) => handleUpdate({ height: parseInt(e.target.value) })}
-                  className="w-full"
-                />
+              <div className="flex-1">
+                <p className="text-xs text-gray-400 mb-1">Height (px)</p>
+                <input type="number" min={300} max={3000} value={designConfig.height || 744}
+                  onChange={(e) => update({ height: Number(e.target.value) })}
+                  className="w-full bg-gray-700 border border-gray-600 text-white text-xs px-2 py-1.5 rounded" />
               </div>
             </div>
-
-            {/* Quick Presets */}
-            <div className="mt-4">
-              <label className="block text-xs text-gray-300 mb-2">Quick Presets</label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() =>
-                    handleUpdate({ width: 1050, height: 744 })
-                  }
-                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition"
-                >
-                  A4 Landscape
+            <div className="flex gap-2">
+              {[
+                { label: 'A4 Landscape', w: 1050, h: 744 },
+                { label: 'A4 Portrait', w: 744, h: 1050 },
+                { label: 'HD (16:9)', w: 1280, h: 720 },
+                { label: 'Square', w: 900, h: 900 },
+              ].map(p => (
+                <button key={p.label} onClick={() => update({ width: p.w, height: p.h })}
+                  className="flex-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition">
+                  {p.label}
                 </button>
-                <button
-                  onClick={() =>
-                    handleUpdate({ width: 744, height: 1050 })
-                  }
-                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition"
-                >
-                  A4 Portrait
-                </button>
-                <button
-                  onClick={() =>
-                    handleUpdate({ width: 1200, height: 800 })
-                  }
-                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition"
-                >
-                  HD 16:9
-                </button>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-700">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition font-semibold"
-          >
-            Close
+        <div className="p-5 border-t border-gray-700">
+          <button onClick={onClose}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition">
+            Apply Settings
           </button>
         </div>
       </div>

@@ -206,3 +206,29 @@ export const verifyEmail = async (req, res, next) => {
     next(error);
   }
 };
+
+// Upload profile photo to Cloudinary
+export const uploadProfilePhoto = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const userId = req.user._id;
+    const profilePhotoUrl = req.file.secure_url;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { profilePhoto: profilePhotoUrl },
+      { new: true, runValidators: true }
+    ).select('-password -resetPasswordToken -resetPasswordExpire');
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile photo uploaded successfully',
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

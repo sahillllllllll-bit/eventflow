@@ -47,58 +47,58 @@ const SettingsPage = () => {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       
-      <div className="ml-60 min-h-screen">
+      <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-6">
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-gray-400 mt-1">Manage your account and preferences</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
+            <p className="text-gray-400 mt-1 text-sm">Manage your account and preferences</p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-w-4xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto">
           {/* Profile Settings */}
-          <div className="p-6 bg-surface border border-surface-overlay rounded-lg mb-6">
+          <div className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg mb-6">
             <div className="flex items-center gap-3 mb-6">
               <User className="w-6 h-6 text-brand" />
-              <h2 className="text-xl font-semibold">Profile Information</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">Profile Information</h2>
             </div>
 
             <form onSubmit={handleProfileUpdate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Full Name</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">Full Name</label>
                 <input
                   type="text"
                   value={profileForm.name}
                   onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white"
+                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">College</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">College</label>
                 <input
                   type="text"
                   value={profileForm.college}
                   onChange={(e) => setProfileForm({ ...profileForm, college: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white"
+                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">Phone</label>
                 <input
                   type="tel"
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white"
+                  className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white text-sm"
                 />
               </div>
 
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition"
+                className="px-4 sm:px-6 py-2.5 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition text-sm"
               >
                 Save Profile
               </button>
@@ -106,21 +106,21 @@ const SettingsPage = () => {
           </div>
 
           {/* Change Password */}
-          <div className="p-6 bg-surface border border-surface-overlay rounded-lg mb-6">
+          <div className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg mb-6">
             <div className="flex items-center gap-3 mb-6">
               <Lock className="w-6 h-6 text-brand" />
-              <h2 className="text-xl font-semibold">Change Password</h2>
+              <h2 className="text-lg sm:text-xl font-semibold">Change Password</h2>
             </div>
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Current Password</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">Current Password</label>
                 <div className="relative">
                   <input
                     type={showPasswords.current ? 'text' : 'password'}
                     value={passwordForm.currentPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white"
+                    className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white text-sm"
                   />
                   <button
                     type="button"
@@ -133,13 +133,13 @@ const SettingsPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">New Password</label>
+                <label className="block text-xs sm:text-sm font-medium mb-2">New Password</label>
                 <div className="relative">
                   <input
                     type={showPasswords.new ? 'text' : 'password'}
                     value={passwordForm.newPassword}
                     onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white"
+                    className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white text-sm"
                   />
                   <button
                     type="button"
@@ -186,7 +186,7 @@ const SettingsPage = () => {
               <label className="block text-sm font-medium mb-2">Public Profile URL</label>
               <input
                 type="text"
-                value={`eventflow.in/o/${user?.organizerSlug}`}
+                value={`eventGlow.in/o/${user?.organizerSlug}`}
                 readOnly
                 className="w-full px-4 py-2.5 bg-surface-overlay border border-surface-overlay rounded-lg text-gray-400"
               />

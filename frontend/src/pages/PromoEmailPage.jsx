@@ -81,18 +81,18 @@ const PromoEmailPage = () => {
     <div className="min-h-screen bg-bg">
       <Sidebar />
       
-      <div className="ml-60 min-h-screen">
+      <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-6">
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold">Promo Emails</h1>
-            <p className="text-gray-400 mt-1">Send updates to past attendees</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Promo Emails</h1>
+            <p className="text-gray-400 mt-1 text-sm">Send updates to past attendees</p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-3 gap-6">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Compose Section */}
             <div className="lg:col-span-2">
               <div className="p-6 bg-surface border border-surface-overlay rounded-lg">

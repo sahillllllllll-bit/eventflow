@@ -14,9 +14,11 @@ import {
   acceptTeamInvite,
   updateTeamMember,
   removeTeamMember,
+  uploadEventCover,
 } from '../controllers/eventController.js';
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
+import { getEventCoverUploader } from '../services/cloudinaryService.js';
 
 const router = express.Router();
 
@@ -57,6 +59,7 @@ router.get('/:slug', getEventBySlug);
 router.put('/:id', auth, updateEvent);
 router.delete('/:id', auth, deleteEvent);
 router.post('/:id/publish', auth, publishEvent);
+router.post('/:id/upload-cover', auth, getEventCoverUploader().single('coverImage'), uploadEventCover);
 router.post('/:id/reminder', auth, validateSchema(z.object({ message: z.string().min(1, 'Message is required') })), sendReminderToRegistrants);
 router.post('/:id/team', auth, validateSchema(teamMemberSchema), inviteTeamMember);
 router.post('/team/accept/:token', auth, acceptTeamInvite);

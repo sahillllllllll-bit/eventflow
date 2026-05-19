@@ -8,32 +8,16 @@ import crypto from 'crypto';
 
 export const createEvent = async (req, res, next) => {
   try {
-    const { title, description, prizesAndGoodies, sendTicketEmails, paidEmailCredits, category, date, endDate, venue, venueMapLink, isOnline, meetLink, isPaid, ticketPrice, maxCapacity, template, tags, formSections } = req.body;
-
-    const slug = generateSlug(title);
-    
-    // Validate and parse dates
-    const parsedDate = date && date.trim() ? new Date(date) : null;
-    const parsedEndDate = endDate && endDate.trim() ? new Date(endDate) : null;
-    
-    if (parsedDate && isNaN(parsedDate.getTime())) {
-      return res.status(400).json({ success: false, message: 'Invalid date format' });
-    }
-    if (parsedEndDate && isNaN(parsedEndDate.getTime())) {
-      return res.status(400).json({ success: false, message: 'Invalid end date format' });
-    }
-    
-    const event = new Event({
-      organizer: req.user.id,
+    const {
       title,
-      slug,
+      shortSummary,       // ← new
       description,
       prizesAndGoodies,
-      sendTicketEmails: sendTicketEmails !== undefined ? sendTicketEmails : true,
-      paidEmailCredits: paidEmailCredits || 0,
+      sendTicketEmails,
+      paidEmailCredits,
       category,
-      date: parsedDate,
-      endDate: parsedEndDate,
+      date,
+      endDate,
       venue,
       venueMapLink,
       isOnline,
@@ -44,11 +28,50 @@ export const createEvent = async (req, res, next) => {
       template,
       tags,
       formSections,
+      brandColor,
+    } = req.body;
+ 
+    const slug = generateSlug(title);
+ 
+    // Validate and parse dates
+    const parsedDate    = date    && date.trim()    ? new Date(date)    : null;
+    const parsedEndDate = endDate && endDate.trim() ? new Date(endDate) : null;
+ 
+    if (parsedDate    && isNaN(parsedDate.getTime()))    {
+      return res.status(400).json({ success: false, message: 'Invalid start date format' });
+    }
+    if (parsedEndDate && isNaN(parsedEndDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid end date format' });
+    }
+ 
+    const event = new Event({
+      organizer:        req.user.id,
+      title,
+      shortSummary:     shortSummary?.trim() || undefined,
+      slug,
+      description:      description || '',
+      prizesAndGoodies,
+      sendTicketEmails: sendTicketEmails !== undefined ? sendTicketEmails : true,
+      paidEmailCredits: paidEmailCredits || 0,
+      category,
+      date:             parsedDate,
+      endDate:          parsedEndDate,
+      venue,
+      venueMapLink,
+      isOnline,
+      meetLink,
+      isPaid,
+      ticketPrice:      isPaid ? ticketPrice : 0,
+      maxCapacity,
+      template,
+      tags,
+      formSections,
+      brandColor:       brandColor || '#6C47FF',
     });
-
+ 
     await event.save();
-
-    res.status(201).json({
+ 
+    return res.status(201).json({
       success: true,
       message: 'Event created successfully',
       event,
@@ -477,6 +500,38 @@ export const getEventAnalytics = async (req, res, next) => {
         paidRegistrations,
         totalRevenue: paidRevenue[0]?.total || 0,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadEventCover = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const event = await Event.findById(id);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    // Check authorization
+    if (event.organizer.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to upload cover for this event' });
+    }
+
+    // Update event with cover image URL
+    event.coverImage = req.file.secure_url;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Event cover image uploaded successfully',
+      coverImage: req.file.secure_url,
     });
   } catch (error) {
     next(error);

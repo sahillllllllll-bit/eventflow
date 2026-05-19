@@ -3,6 +3,21 @@ import Registration from '../models/Registration.js';
 import Event from '../models/Event.js';
 import { sendVerificationEmail, sendTicketConfirmationEmail } from './emailService.js';
 import { v4 as uuidv4 } from 'uuid';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// ─── Certificate Email Transporter ─────────────────────────────────────────────
+const certEmailTransporter = nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_SMTP_LOGIN,
+    pass: process.env.BREVO_SMTP_KEY,
+  },
+});
 
 // Get or create pricing info for organizer
 export const getOrCreatePricing = async (organizerId) => {
@@ -16,23 +31,31 @@ export const getOrCreatePricing = async (organizerId) => {
 
 // Get organizer events with registration count
 export const getOrganizerEventsWithCount = async (organizerId) => {
-  const events = await Event.find({ createdBy: organizerId }).select(
-    'name description startDate endDate eventImage'
-  );
-
-  const eventsWithCount = await Promise.all(
-    events.map(async (event) => {
-      const registrationCount = await Registration.countDocuments({
-        event: event._id,
-      });
-      return {
-        ...event.toObject(),
-        registrationCount,
-      };
-    })
-  );
-
-  return eventsWithCount;
+  // Fetch events that are worth issuing certificates for
+  const events = await Event.find({
+    organizer: organizerId,
+    status: { $in: ['published', 'completed'] },
+  })
+    .select('_id title description date venue isOnline currentRegistrations coverImage')
+    .sort({ date: -1 })
+    .lean();                         // plain JS objects — fast, no Mongoose overhead
+ 
+  if (!events.length) return [];
+ 
+  // Attach live registration counts (currentRegistrations on Event is a cached
+  // counter; we do a real count here so the cert page always shows the truth)
+  const counts = await Registration.aggregate([
+    { $match: { event: { $in: events.map((e) => e._id) } } },
+    { $group: { _id: '$event', count: { $sum: 1 } } },
+  ]);
+ 
+  const countMap = {};
+  counts.forEach((c) => { countMap[c._id.toString()] = c.count; });
+ 
+  return events.map((event) => ({
+    ...event,
+    registrationCount: countMap[event._id.toString()] ?? event.currentRegistrations ?? 0,
+  }));
 };
 
 // Get registrations for an event
@@ -323,31 +346,76 @@ export const getIssuedCertificates = async (templateId) => {
 
 // Send certificate via email
 export const sendCertificateEmail = async (certificateId, pdfUrl) => {
-  const cert = await CertificateIssued.findById(certificateId);
-  if (!cert) throw new Error('Certificate not found');
+  try {
+    const cert = await CertificateIssued.findById(certificateId);
+    if (!cert) throw new Error('Certificate not found');
 
-  const template = await getCertificateTemplate(cert.templateId);
-  const event = await Event.findById(cert.eventId);
+    const template = await getCertificateTemplate(cert.templateId);
+    const event = await Event.findById(cert.eventId);
 
-  const emailContent = `
-    <h2>Congratulations!</h2>
-    <p>Dear ${cert.recipientName},</p>
-    <p>We are delighted to provide you with your certificate for successfully completing <strong>${event.name}</strong>.</p>
-    <p><a href="${pdfUrl}" style="background-color: #3B82F6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Download Certificate</a></p>
-    <p>Best regards,<br>${template.organizerName}</p>
-  `;
+    const emailContent = `
+      <h2 style="color: #fff; margin-top: 0;">Congratulations!</h2>
+      <p>Dear <strong>${cert.recipientName}</strong>,</p>
+      <p>We are delighted to provide you with your certificate for successfully completing <strong>${event?.title || 'the event'}</strong>.</p>
+      <p>You can download your certificate by clicking the button below:</p>
+      <p><a href="${pdfUrl}" style="display:inline-block;margin-top:15px;padding:12px 28px;background:#3B82F6;color:white;text-decoration:none;border-radius:6px;font-weight:600;">Download Certificate</a></p>
+      <p style="margin-top: 30px; color: #999; font-size: 13px;">Best regards,<br><strong>${template?.organizerName || 'EventGlow'}</strong></p>
+    `;
 
-  await sendEmail({
-    to: cert.recipientEmail,
-    subject: `Your Certificate - ${event.name}`,
-    html: emailContent,
-  });
+    const mailOptions = {
+      to: cert.recipientEmail,
+      subject: `Your Certificate - ${event?.title || 'EventGlow'}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        </head>
+        <body style="margin:0;padding:0;background:#0f0f0f;font-family:'Segoe UI',Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:40px 0;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border-radius:12px;overflow:hidden;border:1px solid #2a2a2a;">
+                  <tr>
+                    <td style="background:#3B82F6;padding:28px 40px;">
+                      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;">🎓 Certificate Issued</h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:36px 40px;color:#e0e0e0;font-size:15px;line-height:1.7;">
+                      ${emailContent}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:20px 40px;border-top:1px solid #2a2a2a;text-align:center;">
+                      <p style="margin:0;color:#555;font-size:12px;">© ${new Date().getFullYear()} EventGlow. All rights reserved.</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    };
 
-  cert.emailSentAt = new Date();
-  cert.emailStatus = 'sent';
-  await cert.save();
+    await certEmailTransporter.sendMail({
+      from: process.env.EMAIL_FROM || 'noreply@eventglow.com',
+      ...mailOptions,
+    });
 
-  return cert;
+    cert.emailSentAt = new Date();
+    cert.emailStatus = 'sent';
+    await cert.save();
+
+    console.log(`[CertificateService] Certificate email sent to ${cert.recipientEmail}`);
+    return cert;
+  } catch (error) {
+    console.error(`[CertificateService] Failed to send certificate email:`, error.message);
+    throw error;
+  }
 };
 
 // Update pricing after sending certificates

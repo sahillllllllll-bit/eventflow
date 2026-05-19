@@ -1,320 +1,268 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-/**
- * Production-grade certificate editor store using Zustand
- * Manages canvas state, elements, history, and design configuration
- */
-
 const HISTORY_LIMIT = 50;
 
 const createEditorStore = (template = null) => {
   return create(
     immer((set, get) => ({
-        // ============ CANVAS STATE ============
-        zoom: 1,
-        panX: 0,
-        panY: 0,
-        showGrid: false,
-        showRulers: false,
-        gridSize: 10,
-        snapToGrid: true,
+      // ============ CANVAS STATE ============
+      zoom: 0.7,
+      panX: 0,
+      panY: 0,
+      showGrid: false,
+      snapToGrid: false,
+      gridSize: 20,
 
-        // ============ ELEMENTS & SELECTION ============
-        elements: [],
-        selectedElementIds: [],
-        selectedGroupId: null,
-        draggedElement: null,
+      // ============ ELEMENTS & SELECTION ============
+      elements: [],
+      selectedElementIds: [],
 
-        // ============ DESIGN CONFIG ============
-        designConfig: {
-          backgroundColor: template?.backgroundColor || '#FFFFFF',
-          backgroundPattern: 'solid',
-          backgroundImage: null,
-          borderStyle: template?.borderStyle || 'elegant',
-          borderColor: template?.borderColor || '#D4A574',
-          borderWidth: 8,
-          width: 1050, // A4 landscape
-          height: 744,
-          padding: 40,
-          decorativeElements: template?.decorativeElements || [],
-        },
+      // ============ DESIGN CONFIG ============
+      designConfig: {
+        backgroundColor: template?.backgroundColor || '#FFFFFF',
+        backgroundGradient: template?.backgroundGradient || null,
+        borderStyle: template?.borderStyle || 'elegant',
+        borderColor: template?.borderColor || '#D4A574',
+        borderWidth: template?.borderWidth || 8,
+        width: 1050,
+        height: 744,
+        padding: 40,
+      },
 
-        // ============ EDITOR STATE ============
-        activeTool: 'select', // select, text, image, shape, etc.
-        activePanel: 'elements', // elements, design, properties
-        textEditing: null, // element id being edited
-        isDrawing: false,
-        viewMode: 'editor', // editor, preview
+      // ============ EDITOR STATE ============
+      activeTool: 'select',
+      activePanel: 'tools',
+      textEditing: null,
+      viewMode: 'editor',
 
-        // ============ HISTORY ============
-        history: [],
-        historyIndex: -1,
+      // ============ HISTORY ============
+      history: [],
+      historyIndex: -1,
 
-        // ============ CANVAS ACTIONS ============
-        setZoom: (zoom) => set((state) => {
-          state.zoom = Math.max(0.1, Math.min(4, zoom));
-        }),
+      // ============ CANVAS ACTIONS ============
+      setZoom: (zoom) => set((state) => { state.zoom = Math.max(0.1, Math.min(3, zoom)); }),
+      setPan: (panX, panY) => set((state) => { state.panX = panX; state.panY = panY; }),
+      setShowGrid: (show) => set((state) => { state.showGrid = show; }),
+      setSnapToGrid: (snap) => set((state) => { state.snapToGrid = snap; }),
 
-        setPan: (panX, panY) => set((state) => {
-          state.panX = panX;
-          state.panY = panY;
-        }),
-
-        setShowGrid: (show) => set((state) => {
-          state.showGrid = show;
-        }),
-
-        setShowRulers: (show) => set((state) => {
-          state.showRulers = show;
-        }),
-
-        setSnapToGrid: (snap) => set((state) => {
-          state.snapToGrid = snap;
-        }),
-
-        // ============ SELECTION ACTIONS ============
-        selectElement: (elementId, multiSelect = false) => set((state) => {
-          if (multiSelect) {
-            if (state.selectedElementIds.includes(elementId)) {
-              state.selectedElementIds = state.selectedElementIds.filter(id => id !== elementId);
-            } else {
-              state.selectedElementIds.push(elementId);
-            }
+      // ============ SELECTION ============
+      selectElement: (elementId, multiSelect = false) => set((state) => {
+        if (!elementId) { state.selectedElementIds = []; return; }
+        if (multiSelect) {
+          if (state.selectedElementIds.includes(elementId)) {
+            state.selectedElementIds = state.selectedElementIds.filter(id => id !== elementId);
           } else {
-            state.selectedElementIds = elementId ? [elementId] : [];
+            state.selectedElementIds.push(elementId);
           }
-        }),
+        } else {
+          state.selectedElementIds = [elementId];
+        }
+      }),
+      clearSelection: () => set((state) => { state.selectedElementIds = []; }),
+      selectMultiple: (ids) => set((state) => { state.selectedElementIds = ids; }),
 
-        clearSelection: () => set((state) => {
-          state.selectedElementIds = [];
-          state.selectedGroupId = null;
-        }),
-
-        selectMultiple: (elementIds) => set((state) => {
-          state.selectedElementIds = elementIds;
-        }),
-
-        // ============ ELEMENT ACTIONS ============
-        addElement: (element) => set((state) => {
-          const newElement = {
-            id: `element-${Date.now()}-${Math.random()}`,
+      // ============ ELEMENTS ============
+      addElement: (element) => {
+        const newId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        set((state) => {
+          state.elements.push({
+            id: newId,
             zIndex: state.elements.length,
             isLocked: false,
             isHidden: false,
+            rotation: 0,
+            opacity: 1,
             ...element,
-          };
-          state.elements.push(newElement);
-          state.selectedElementIds = [newElement.id];
-          get().saveToHistory();
-          return newElement.id;
-        }, false),
-
-        updateElement: (elementId, updates) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            Object.assign(element, updates);
-            get().saveToHistory();
-          }
-        }),
-
-        updateElements: (updates) => set((state) => {
-          updates.forEach(({ id, changes }) => {
-            const element = state.elements.find(el => el.id === id);
-            if (element) {
-              Object.assign(element, changes);
-            }
           });
-          get().saveToHistory();
-        }),
+          state.selectedElementIds = [newId];
+        });
+        get().saveToHistory();
+        return newId;
+      },
 
-        deleteElement: (elementId) => set((state) => {
-          state.elements = state.elements.filter(el => el.id !== elementId);
+      updateElement: (elementId, updates) => {
+        set((state) => {
+          const el = state.elements.find(e => e.id === elementId);
+          if (el) Object.assign(el, updates);
+        });
+        get().saveToHistory();
+      },
+
+      // Live update during drag/resize (no history save)
+      updateElementLive: (elementId, updates) => {
+        set((state) => {
+          const el = state.elements.find(e => e.id === elementId);
+          if (el) Object.assign(el, updates);
+        });
+      },
+
+      // Call after drag/resize ends
+      commitLiveUpdate: () => { get().saveToHistory(); },
+
+      updateElements: (updates) => {
+        set((state) => {
+          updates.forEach(({ id, changes }) => {
+            const el = state.elements.find(e => e.id === id);
+            if (el) Object.assign(el, changes);
+          });
+        });
+        get().saveToHistory();
+      },
+
+      deleteElement: (elementId) => {
+        set((state) => {
+          state.elements = state.elements.filter(e => e.id !== elementId);
           state.selectedElementIds = state.selectedElementIds.filter(id => id !== elementId);
-          get().saveToHistory();
-        }),
+        });
+        get().saveToHistory();
+      },
 
-        deleteSelected: () => {
-          const { selectedElementIds } = get();
-          selectedElementIds.forEach(id => get().deleteElement(id));
-        },
+      deleteSelected: () => {
+        const { selectedElementIds } = get();
+        if (!selectedElementIds.length) return;
+        set((state) => {
+          state.elements = state.elements.filter(e => !selectedElementIds.includes(e.id));
+          state.selectedElementIds = [];
+        });
+        get().saveToHistory();
+      },
 
-        duplicateElement: (elementId) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            const newElement = {
-              ...element,
-              id: `element-${Date.now()}-${Math.random()}`,
-              x: (element.x || 0) + 20,
-              y: (element.y || 0) + 20,
-              zIndex: state.elements.length,
-            };
-            state.elements.push(newElement);
-            state.selectedElementIds = [newElement.id];
-            get().saveToHistory();
+      duplicateElement: (elementId) => {
+        const el = get().elements.find(e => e.id === elementId);
+        if (!el) return;
+        const newId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        set((state) => {
+          state.elements.push({
+            ...JSON.parse(JSON.stringify(el)),
+            id: newId,
+            x: (el.x || 0) + 20,
+            y: (el.y || 0) + 20,
+            zIndex: state.elements.length,
+          });
+          state.selectedElementIds = [newId];
+        });
+        get().saveToHistory();
+      },
+
+      getElement: (id) => get().elements.find(e => e.id === id),
+      getAllElements: () => get().elements,
+
+      // ============ LAYERING ============
+      bringForward: (id) => {
+        set((state) => {
+          const i = state.elements.findIndex(e => e.id === id);
+          if (i < state.elements.length - 1) {
+            [state.elements[i], state.elements[i + 1]] = [state.elements[i + 1], state.elements[i]];
           }
-        }),
+        });
+        get().saveToHistory();
+      },
+      sendBackward: (id) => {
+        set((state) => {
+          const i = state.elements.findIndex(e => e.id === id);
+          if (i > 0) [state.elements[i], state.elements[i - 1]] = [state.elements[i - 1], state.elements[i]];
+        });
+        get().saveToHistory();
+      },
+      bringToFront: (id) => {
+        set((state) => {
+          const i = state.elements.findIndex(e => e.id === id);
+          if (i !== -1) { const [el] = state.elements.splice(i, 1); state.elements.push(el); }
+        });
+        get().saveToHistory();
+      },
+      sendToBack: (id) => {
+        set((state) => {
+          const i = state.elements.findIndex(e => e.id === id);
+          if (i !== -1) { const [el] = state.elements.splice(i, 1); state.elements.unshift(el); }
+        });
+        get().saveToHistory();
+      },
 
-        getElement: (elementId) => {
-          const { elements } = get();
-          return elements.find(el => el.id === elementId);
-        },
+      toggleLock: (id) => {
+        set((state) => { const el = state.elements.find(e => e.id === id); if (el) el.isLocked = !el.isLocked; });
+      },
+      toggleVisibility: (id) => {
+        set((state) => { const el = state.elements.find(e => e.id === id); if (el) el.isHidden = !el.isHidden; });
+      },
 
-        getAllElements: () => get().elements,
+      // ============ DESIGN CONFIG ============
+      updateDesignConfig: (updates) => {
+        set((state) => { Object.assign(state.designConfig, updates); });
+        get().saveToHistory();
+      },
+      getDesignConfig: () => get().designConfig,
 
-        // ============ LAYERING ============
-        bringForward: (elementId) => set((state) => {
-          const index = state.elements.findIndex(el => el.id === elementId);
-          if (index < state.elements.length - 1) {
-            [state.elements[index], state.elements[index + 1]] = [state.elements[index + 1], state.elements[index]];
-            get().saveToHistory();
-          }
-        }),
+      // ============ EDITOR STATE ============
+      setActiveTool: (tool) => set((state) => { state.activeTool = tool; if (tool !== 'text') state.textEditing = null; }),
+      setActivePanel: (panel) => set((state) => { state.activePanel = panel; }),
+      setTextEditing: (id) => set((state) => { state.textEditing = id; }),
+      setViewMode: (mode) => set((state) => { state.viewMode = mode; }),
 
-        sendBackward: (elementId) => set((state) => {
-          const index = state.elements.findIndex(el => el.id === elementId);
-          if (index > 0) {
-            [state.elements[index], state.elements[index - 1]] = [state.elements[index - 1], state.elements[index]];
-            get().saveToHistory();
-          }
-        }),
-
-        bringToFront: (elementId) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            state.elements = state.elements.filter(el => el.id !== elementId);
-            state.elements.push(element);
-            get().saveToHistory();
-          }
-        }),
-
-        sendToBack: (elementId) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            state.elements = state.elements.filter(el => el.id !== elementId);
-            state.elements.unshift(element);
-            get().saveToHistory();
-          }
-        }),
-
-        // ============ ELEMENT LOCKING ============
-        toggleLock: (elementId) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            element.isLocked = !element.isLocked;
-            get().saveToHistory();
-          }
-        }),
-
-        toggleVisibility: (elementId) => set((state) => {
-          const element = state.elements.find(el => el.id === elementId);
-          if (element) {
-            element.isHidden = !element.isHidden;
-            get().saveToHistory();
-          }
-        }),
-
-        // ============ DESIGN CONFIG ============
-        updateDesignConfig: (updates) => set((state) => {
-          Object.assign(state.designConfig, updates);
-          get().saveToHistory();
-        }),
-
-        getDesignConfig: () => get().designConfig,
-
-        // ============ EDITOR STATE ============
-        setActiveTool: (tool) => set((state) => {
-          state.activeTool = tool;
-          if (tool !== 'text') {
-            state.textEditing = null;
-          }
-        }),
-
-        setActivePanel: (panel) => set((state) => {
-          state.activePanel = panel;
-        }),
-
-        setTextEditing: (elementId) => set((state) => {
-          state.textEditing = elementId;
-        }),
-
-        setViewMode: (mode) => set((state) => {
-          state.viewMode = mode;
-        }),
-
-        // ============ HISTORY & UNDO/REDO ============
-        saveToHistory: () => {
-          const state = get();
-          const snapshot = {
-            elements: JSON.parse(JSON.stringify(state.elements)),
-            designConfig: JSON.parse(JSON.stringify(state.designConfig)),
-          };
-
-          // Remove any future history if we're not at the end
+      // ============ HISTORY ============
+      saveToHistory: () => {
+        const current = get();
+        const snapshot = {
+          elements: JSON.parse(JSON.stringify(current.elements)),
+          designConfig: JSON.parse(JSON.stringify(current.designConfig)),
+        };
+        set((state) => {
           const newHistory = state.history.slice(0, state.historyIndex + 1);
           newHistory.push(snapshot);
+          if (newHistory.length > HISTORY_LIMIT) newHistory.shift();
+          state.history = newHistory;
+          state.historyIndex = newHistory.length - 1;
+        });
+      },
 
-          // Limit history size
-          if (newHistory.length > HISTORY_LIMIT) {
-            newHistory.shift();
-            state.history = newHistory;
-            state.historyIndex = newHistory.length - 1;
-          } else {
-            state.history = newHistory;
-            state.historyIndex = newHistory.length - 1;
-          }
-        },
-
-        undo: () => {
-          const state = get();
-          if (state.historyIndex > 0) {
-            state.historyIndex--;
-            const snapshot = state.history[state.historyIndex];
-            state.elements = JSON.parse(JSON.stringify(snapshot.elements));
-            state.designConfig = JSON.parse(JSON.stringify(snapshot.designConfig));
-            state.selectedElementIds = [];
-          }
-        },
-
-        redo: () => {
-          const state = get();
-          if (state.historyIndex < state.history.length - 1) {
-            state.historyIndex++;
-            const snapshot = state.history[state.historyIndex];
-            state.elements = JSON.parse(JSON.stringify(snapshot.elements));
-            state.designConfig = JSON.parse(JSON.stringify(snapshot.designConfig));
-            state.selectedElementIds = [];
-          }
-        },
-
-        canUndo: () => get().historyIndex > 0,
-        canRedo: () => get().historyIndex < get().history.length - 1,
-
-        // ============ STATE SERIALIZATION ============
-        getState: () => ({
-          elements: get().elements,
-          designConfig: get().designConfig,
-        }),
-
-        setState: (state) => set((draft) => {
-          draft.elements = state.elements || [];
-          draft.designConfig = state.designConfig || draft.designConfig;
-          draft.history = [];
-          draft.historyIndex = -1;
-        }),
-
-        // ============ RESET ============
-        reset: () => set((state) => {
-          state.elements = [];
+      undo: () => {
+        const { historyIndex, history } = get();
+        if (historyIndex <= 0) return;
+        set((state) => {
+          state.historyIndex = historyIndex - 1;
+          const snap = history[historyIndex - 1];
+          state.elements = JSON.parse(JSON.stringify(snap.elements));
+          state.designConfig = JSON.parse(JSON.stringify(snap.designConfig));
           state.selectedElementIds = [];
-          state.history = [];
-          state.historyIndex = -1;
-          state.zoom = 1;
-          state.panX = 0;
-          state.panY = 0;
-        }),
-      }))
-    );
+        });
+      },
+
+      redo: () => {
+        const { historyIndex, history } = get();
+        if (historyIndex >= history.length - 1) return;
+        set((state) => {
+          state.historyIndex = historyIndex + 1;
+          const snap = history[historyIndex + 1];
+          state.elements = JSON.parse(JSON.stringify(snap.elements));
+          state.designConfig = JSON.parse(JSON.stringify(snap.designConfig));
+          state.selectedElementIds = [];
+        });
+      },
+
+      canUndo: () => get().historyIndex > 0,
+      canRedo: () => get().historyIndex < get().history.length - 1,
+
+      // ============ SERIALIZATION ============
+      serializeState: () => ({ elements: get().elements, designConfig: get().designConfig }),
+
+      loadState: (newState) => set((state) => {
+        state.elements = newState.elements || [];
+        state.designConfig = { ...state.designConfig, ...(newState.designConfig || {}) };
+        state.history = [];
+        state.historyIndex = -1;
+        state.selectedElementIds = [];
+      }),
+
+      reset: () => set((state) => {
+        state.elements = [];
+        state.selectedElementIds = [];
+        state.history = [];
+        state.historyIndex = -1;
+        state.zoom = 0.7;
+      }),
+    }))
+  );
 };
 
 export { createEditorStore };

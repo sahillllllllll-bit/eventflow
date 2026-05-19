@@ -37,22 +37,41 @@ const PublicRegistrationPage = () => {
     try {
       setSubmitting(true);
 
-      const payload = {
-        eventId: event._id,
-        name: formData.name || '',
-        email: formData.email || '',
-        phone: formData.phone || '',
-        responses: Object.entries(formData)
-          .filter(([key]) => !['name', 'email', 'phone', 'consentPromoEmails'].includes(key))
-          .reduce((acc, [key, value]) => {
-            acc[key] = value;
-            return acc;
-          }, {}),
-        consentPromoEmails: formData.consentPromoEmails !== false,
-      };
+      // Create FormData for multipart file upload
+      const submitFormData = new FormData();
+      
+      // Add basic fields
+      submitFormData.append('eventId', event._id);
+      submitFormData.append('name', formData.fullName || '');
+      submitFormData.append('email', formData.email || '');
+      submitFormData.append('phone', formData.phone || '');
+      submitFormData.append('consentPromoEmails', formData.consentPromoEmails !== false);
+
+      // Separate files from text responses
+      const textResponses = {};
+      let filesAdded = false;
+
+      for (const [key, value] of Object.entries(formData)) {
+        // Skip locked fields
+        if (['fullName', 'email', 'phone', 'consentPromoEmails'].includes(key)) {
+          continue;
+        }
+
+        // Handle file uploads
+        if (value instanceof File) {
+          submitFormData.append('files', value, key); // fieldname: key
+          filesAdded = true;
+        } else if (value !== undefined && value !== null && value !== '') {
+          // Add text responses
+          textResponses[key] = String(value);
+        }
+      }
+
+      // Add responses as JSON string
+      submitFormData.append('responses', JSON.stringify(textResponses));
 
       // Direct registration (no payment)
-      const response = await registrationAPI.registerForEvent(payload);
+      const response = await registrationAPI.registerForEvent(submitFormData);
 
       setSuccessData(response.data.registration);
       setSuccessModal(true);

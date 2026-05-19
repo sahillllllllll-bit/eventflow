@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
-const RegistrationForm = ({ formSections, onSubmit, loading = false }) => {
+const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = false, ticketPrice = 0 }) => {
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -33,6 +33,13 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false }) => {
       [fieldId]: file,
     }));
   };
+
+  // Locked/required fields that always appear
+  const lockedFields = [
+    { id: 'fullName', label: 'Full Name', type: 'text', placeholder: 'Your full name', required: true },
+    { id: 'email', label: 'Email Address', type: 'email', placeholder: 'your.email@example.com', required: true },
+    { id: 'phone', label: 'Phone Number', type: 'phone', placeholder: '10-digit phone number', required: true },
+  ];
 
   const validateForm = () => {
     const newErrors = {};
@@ -97,13 +104,6 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false }) => {
       onSubmit(formData);
     }
   };
-
-  // Locked/required fields that always appear
-  const lockedFields = [
-    { id: 'name', label: 'Full Name', type: 'text', placeholder: 'Your full name', required: true },
-    { id: 'email', label: 'Email Address', type: 'email', placeholder: 'your.email@example.com', required: true },
-    { id: 'phone', label: 'Phone Number', type: 'phone', placeholder: '10-digit phone number', required: true },
-  ];
 
   const renderField = (section) => {
     const fieldId = section.id;
@@ -346,6 +346,16 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false }) => {
           </span>
         </label>
       </div>
+
+      {/* Pricing Info */}
+      {isPaid && (
+        <div className="p-4 bg-brand/5 border border-brand/20 rounded-lg">
+          <p className="text-sm text-gray-300">
+            <span className="font-semibold">Ticket Price:</span> ₹{ticketPrice}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">You'll be redirected to Razorpay for payment after submission.</p>
+        </div>
+      )}
 
       {/* Submit Button */}
       <button

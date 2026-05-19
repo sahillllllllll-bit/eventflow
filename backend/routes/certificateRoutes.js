@@ -14,8 +14,11 @@ import {
   getPricingInfo,
   getOrganizerTemplates,
   deleteTemplate,
+  uploadCertificateLogo,
+  uploadCertificateSignature,
 } from '../controllers/certificateController.js';
 import { auth as protect } from '../middleware/auth.js';
+import { getCertificateLogoUploader, getCertificateSignatureUploader } from '../services/cloudinaryService.js';
 
 const router = express.Router();
 
@@ -31,6 +34,8 @@ router.post('/template/create', createTemplate);
 router.get('/template/:templateId', getTemplate);
 router.put('/template/:templateId', updateTemplate);
 router.delete('/template/:templateId', deleteTemplate);
+router.post('/template/:templateId/upload-logo', getCertificateLogoUploader().single('logo'), uploadCertificateLogo);
+router.post('/template/:templateId/upload-signature', getCertificateSignatureUploader().single('signature'), uploadCertificateSignature);
 router.get('/organizer/templates', getOrganizerTemplates);
 
 // Certificate generation endpoints

@@ -8,6 +8,9 @@ export const authAPI = {
   forgotPassword: (email) => axiosInstance.post('/auth/forgot-password', { email }),
   resetPassword: (token, data) => axiosInstance.post(`/auth/reset-password/${token}`, data),
   verifyEmail: (token) => axiosInstance.get(`/auth/verify-email/${token}`),
+  uploadProfilePhoto: (formData) => axiosInstance.post('/auth/upload-profile-photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 };
 
 // Event APIs
@@ -19,6 +22,9 @@ export const eventAPI = {
   updateEvent: (id, data) => axiosInstance.put(`/events/${id}`, data),
   deleteEvent: (id) => axiosInstance.delete(`/events/${id}`),
   publishEvent: (id) => axiosInstance.post(`/events/${id}/publish`),
+  uploadEventCover: (id, formData) => axiosInstance.post(`/events/${id}/upload-cover`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   sendReminder: (id, data) => axiosInstance.post(`/events/${id}/reminder`, data),
   inviteTeamMember: (id, data) => axiosInstance.post(`/events/${id}/team`, data),
   acceptTeamInvite: (token) => axiosInstance.post(`/events/team/accept/${token}`),
@@ -68,6 +74,12 @@ export const certificateAPI = {
   getTemplate: (templateId) => axiosInstance.get(`/certificates/template/${templateId}`),
   updateTemplate: (templateId, data) => axiosInstance.put(`/certificates/template/${templateId}`, data),
   deleteTemplate: (templateId) => axiosInstance.delete(`/certificates/template/${templateId}`),
+  uploadTemplateLogo: (templateId, formData) => axiosInstance.post(`/certificates/template/${templateId}/upload-logo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  uploadTemplateSignature: (templateId, formData) => axiosInstance.post(`/certificates/template/${templateId}/upload-signature`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   getOrganizerTemplates: () => axiosInstance.get('/certificates/organizer/templates'),
 
   // Certificate Generation

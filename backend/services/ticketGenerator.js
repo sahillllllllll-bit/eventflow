@@ -404,7 +404,7 @@ export const generateTicketHTML = (ticketData) => {
             <div class="footer-text">
                 <p><strong>Need help?</strong> Visit our website or reply to this email.</p>
                 <p style="margin-top: 15px; font-size: 12px;">
-                    © EventFlow ${new Date().getFullYear()} | All rights reserved
+                    © EventGlow ${new Date().getFullYear()} | All rights reserved
                 </p>
             </div>
         </div>
@@ -536,7 +536,7 @@ export const generateTicketEmailHTML = (ticketData) => {
                                 <strong>Important:</strong> Arrive early and have this email handy. Your ticket is non-transferable.
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #999;">
-                                © EventFlow ${new Date().getFullYear()} | All rights reserved
+                                © EventGlow ${new Date().getFullYear()} | All rights reserved
                             </p>
                         </td>
                     </tr>

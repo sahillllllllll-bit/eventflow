@@ -3,7 +3,7 @@ import { Calendar, Users, IndianRupee, MoreVertical, Share2, Edit2, Trash2, Eye 
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge.jsx';
 
-const EventCard = ({ event, onDelete, onShare }) => {
+const EventCard = ({ event, onClick, onDelete, onShare }) => {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = React.useState(false);
 
@@ -16,7 +16,7 @@ const EventCard = ({ event, onDelete, onShare }) => {
   };
 
   return (
-    <div className="p-4 bg-surface border border-surface-overlay rounded-lg hover:border-brand/50 transition">
+    <div   onClick={onClick} className="p-4 bg-surface border border-surface-overlay rounded-lg hover:border-brand/50 transition">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
