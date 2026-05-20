@@ -5,7 +5,7 @@ import { eventAPI, registrationAPI } from '../api/endpoints.js';
 import Sidebar from '../components/Sidebar.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
-import { Download } from 'lucide-react';
+import { Download, X, Eye } from 'lucide-react';
 
 const EventDetailPage = () => {
   const { id } = useParams();
@@ -24,6 +24,7 @@ const EventDetailPage = () => {
   const [reminderMessage, setReminderMessage] = useState('');
   const [sendingReminder, setSendingReminder] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false); // ← NEW
+  const [selectedRegistration, setSelectedRegistration] = useState(null); // ← NEW: for detail modal
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -556,6 +557,7 @@ const EventDetailPage = () => {
                       <th className="text-left py-3 px-4 text-gray-400">Ticket ID</th>
                       <th className="text-left py-3 px-4 text-gray-400">Status</th>
                       <th className="text-left py-3 px-4 text-gray-400">Registered</th>
+                      <th className="text-left py-3 px-4 text-gray-400">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -570,6 +572,15 @@ const EventDetailPage = () => {
                         <td className="py-3 px-4 text-gray-400 text-xs">
                           {new Date(reg.registeredAt).toLocaleDateString()}
                         </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => setSelectedRegistration(reg)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded text-xs font-medium transition"
+                          >
+                            <Eye size={14} />
+                            View
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -580,7 +591,7 @@ const EventDetailPage = () => {
 
           {/* Analytics Tab */}
           {activeTab === 'analytics' && analytics && (
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="p-6 bg-surface border border-surface-overlay rounded-lg">
                 <h3 className="font-semibold mb-4">Check-in Rate</h3>
                 <div className="text-4xl font-bold text-brand mb-2">{analytics.checkInRate}%</div>
@@ -654,6 +665,123 @@ const EventDetailPage = () => {
           />
         ))}
       </div>
+
+      {/* Registration Details Modal */}
+      {selectedRegistration && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface border border-surface-overlay rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 flex items-center justify-between p-6 border-b border-surface-overlay bg-surface">
+              <h2 className="text-2xl font-bold text-white">Registration Details</h2>
+              <button
+                onClick={() => setSelectedRegistration(null)}
+                className="p-1 hover:bg-surface-overlay rounded transition"
+              >
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-200 mb-4">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Name</p>
+                    <p className="text-white font-medium">{selectedRegistration.name}</p>
+                  </div>
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Email</p>
+                    <p className="text-white font-medium break-all">{selectedRegistration.email}</p>
+                  </div>
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Phone</p>
+                    <p className="text-white font-medium">{selectedRegistration.phone || '-'}</p>
+                  </div>
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Ticket ID</p>
+                    <p className="text-white font-mono text-sm">{selectedRegistration.ticketId}</p>
+                  </div>
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Registered</p>
+                    <p className="text-white font-medium">
+                      {new Date(selectedRegistration.registeredAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-surface-overlay p-4 rounded-lg">
+                    <p className="text-xs text-gray-400 uppercase mb-1">Status</p>
+                    <p className="text-white font-medium">
+                      {selectedRegistration.checkedIn ? '✓ Checked In' : '◯ Not Checked In'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Form Responses */}
+              {selectedRegistration.responses && selectedRegistration.responses.size > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-200 mb-4">Form Responses</h3>
+                  <div className="space-y-3">
+                    {Array.from(selectedRegistration.responses.entries()).map(([fieldId, value]) => {
+                      const formSection = event?.formSections?.find(s => s.id === fieldId);
+                      const label = formSection?.label || fieldId;
+                      return (
+                        <div key={fieldId} className="bg-surface-overlay p-4 rounded-lg">
+                          <p className="text-xs text-gray-400 uppercase mb-1">{label}</p>
+                          <p className="text-white break-words">{value || '-'}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* File Uploads */}
+              {selectedRegistration.fileUploads && selectedRegistration.fileUploads.size > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-200 mb-4">File Uploads</h3>
+                  <div className="space-y-3">
+                    {Array.from(selectedRegistration.fileUploads.entries()).map(([fieldId, fileData]) => {
+                      const formSection = event?.formSections?.find(s => s.id === fieldId);
+                      const label = formSection?.label || fieldId;
+                      return (
+                        <div key={fieldId} className="bg-surface-overlay p-4 rounded-lg">
+                          <p className="text-xs text-gray-400 uppercase mb-2">{label}</p>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-white text-sm font-medium break-words">{fileData.filename}</p>
+                              <p className="text-gray-400 text-xs mt-1">
+                                {fileData.size ? `${(fileData.size / 1024).toFixed(2)} KB` : 'Size unknown'}
+                              </p>
+                            </div>
+                            <a
+                              href={fileData.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded text-xs font-medium transition whitespace-nowrap"
+                            >
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* No Custom Fields Message */}
+              {(!selectedRegistration.responses || selectedRegistration.responses.size === 0) &&
+                (!selectedRegistration.fileUploads || selectedRegistration.fileUploads.size === 0) && (
+                <div className="text-center py-6">
+                  <p className="text-gray-400">No custom form responses or file uploads</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

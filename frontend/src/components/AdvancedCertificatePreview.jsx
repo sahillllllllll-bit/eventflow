@@ -192,7 +192,7 @@ export default function AdvancedCertificatePreview({
       {isEditing && (
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <h3 className="font-semibold text-blue-900 mb-3">Quick Edit</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <button
               onClick={() => setEditingField('recipientName')}
               className="p-3 bg-white border border-blue-300 rounded hover:bg-blue-100 text-sm font-medium"

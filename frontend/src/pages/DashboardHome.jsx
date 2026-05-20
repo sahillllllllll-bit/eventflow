@@ -92,7 +92,7 @@ const DashboardHome = () => {
         {/* Content */}
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           {/* Metrics */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
               icon={TrendingUp}
               label="Total Events"

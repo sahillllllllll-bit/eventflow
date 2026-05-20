@@ -18,12 +18,23 @@ export const exportRegistrationsToCSV = async (registrations, eventTitle, formSe
       { id: 'checkedInAt', title: 'Checked In At' },
     ];
 
-    // Add form response columns
+    // Add form response columns for all sections
     formSections.forEach(section => {
+      // Skip heading and divider sections
+      if (section.type === 'heading' || section.type === 'divider') return;
+      
       headers.push({
         id: `response_${section.id}`,
         title: section.label || section.type,
       });
+
+      // For file fields, add a separate column for the file URL
+      if (section.type === 'file') {
+        headers.push({
+          id: `file_${section.id}`,
+          title: `${section.label || 'File'} - URL`,
+        });
+      }
     });
 
     const fileName = `${eventTitle.replace(/\s+/g, '-')}-registrations-${Date.now()}.csv`;
@@ -39,15 +50,24 @@ export const exportRegistrationsToCSV = async (registrations, eventTitle, formSe
         ticketId: reg.ticketId,
         name: reg.name,
         email: reg.email,
-        phone: reg.phone,
-        registeredAt: reg.registeredAt,
+        phone: reg.phone || '',
+        registeredAt: reg.registeredAt ? new Date(reg.registeredAt).toLocaleString() : '',
         checkedIn: reg.checkedIn ? 'Yes' : 'No',
-        checkedInAt: reg.checkedInAt || '',
+        checkedInAt: reg.checkedInAt ? new Date(reg.checkedInAt).toLocaleString() : '',
       };
 
-      // Add form responses
+      // Add form responses and file URLs
       formSections.forEach(section => {
-        record[`response_${section.id}`] = reg.responses?.get(section.id) || '';
+        if (section.type === 'heading' || section.type === 'divider') return;
+
+        const responseValue = reg.responses?.get(section.id) || '';
+        record[`response_${section.id}`] = responseValue;
+
+        // Add file URL if it's a file field
+        if (section.type === 'file') {
+          const fileData = reg.fileUploads?.get(section.id);
+          record[`file_${section.id}`] = fileData ? fileData.url : '';
+        }
       });
 
       return record;

@@ -370,7 +370,7 @@ export default function CertificateTemplateEditor({
         {/* Element Selection */}
         <div className="p-6 border-b border-gray-200 space-y-3">
           <h3 className="text-sm font-semibold text-gray-900">Edit Elements</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {editableElements.map((element) => (
               <button
                 key={element.id}

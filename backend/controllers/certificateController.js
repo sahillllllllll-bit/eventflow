@@ -245,7 +245,7 @@ export const downloadCertificatePDF = async (req, res) => {
     }
 
     if (!cert.eventId) {
-      return res.status(404).json({ error: 'Certificate event not found' });
+      return res.status(404).json({ error: 'Certificate event not found' }); 
     }
 
     // Use the saved certificateData snapshot to maintain template consistency

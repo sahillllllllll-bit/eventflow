@@ -101,7 +101,7 @@ const PublicEventPage = () => {
 
       {/* ── Details cards ─────────────────────────────────────────────────── */}
       <section className="px-6 py-16 max-w-5xl mx-auto">
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
           {/* Date */}
           <div className="p-6 border border-border rounded-xl bg-surface-raised hover:border-brand/50 transition">
             <div className="flex items-center gap-3 mb-3">

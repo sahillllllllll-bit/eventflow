@@ -191,7 +191,7 @@ const CreateEventPage = () => {
               </div>
 
               {/* Category & Capacity */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
                   <select
@@ -217,7 +217,7 @@ const CreateEventPage = () => {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Start Date & Time *</label>
                   <input type="datetime-local" value={formData.date}
@@ -403,7 +403,7 @@ const CreateEventPage = () => {
             <div className="space-y-6 bg-surface-raised border border-border rounded-xl p-8">
               <h2 className="text-2xl font-bold mb-2">Choose Landing Page Template</h2>
               <p className="text-gray-400 mb-6">Pick a design for your event's public landing page</p>
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {['minimal','bold','gradient','dark','glass'].map(template => (
                   <TemplateCard key={template} template={template}
                     isSelected={formData.template === template}
@@ -435,7 +435,7 @@ const CreateEventPage = () => {
                     <p className="text-sm text-gray-400 mt-1">{formData.shortSummary}</p>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-surface-overlay border border-border rounded-lg">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Date</p>
                     <p className="text-sm text-gray-300">
@@ -449,7 +449,7 @@ const CreateEventPage = () => {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-surface-overlay border border-border rounded-lg">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Template</p>
                     <p className="text-sm text-gray-300 capitalize">{formData.template}</p>

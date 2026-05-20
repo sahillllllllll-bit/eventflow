@@ -76,7 +76,7 @@ const TemplateCard = ({ template, isSelected, onClick, preview }) => {
           <div className="max-w-2xl mx-auto">
             <h1 className="text-3xl font-bold mb-4">Sample Event Title</h1>
             <p className="mb-4 opacity-90">This is a preview of how your event landing page will look with the {template} template. The design focuses on {templateDescriptions[template].toLowerCase()}.</p>
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="p-4 bg-black/10 rounded">
                 <div className="text-sm font-semibold">Date & Time</div>
                 <div className="text-sm opacity-80">Sample Date</div>
