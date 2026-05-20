@@ -63,11 +63,11 @@ const FormBuilder = ({ sections, onSectionsChange }) => {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-6 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
       {/* Toolbox */}
-      <div className="col-span-1 bg-surface-raised border border-border rounded-xl p-6 overflow-y-auto">
+      <div className="lg:col-span-1 bg-surface-raised border border-border rounded-xl p-6 overflow-y-auto">
         <h3 className="font-semibold mb-4 text-white">Add Fields</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
           {fieldTypes.map(field => (
             <button
               key={field.type}
@@ -81,7 +81,7 @@ const FormBuilder = ({ sections, onSectionsChange }) => {
       </div>
 
       {/* Preview & Editor */}
-      <div className="col-span-2 space-y-4 overflow-y-auto max-h-96">
+      <div className="lg:col-span-2 space-y-4 overflow-y-auto max-h-96">
         {/* Locked Fields */}
         <div className="bg-surface-raised border border-border rounded-xl p-6 space-y-4">
           <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wide">Required Fields</h3>

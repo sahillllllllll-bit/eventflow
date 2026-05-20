@@ -80,7 +80,7 @@ const EditEventPage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-surface-overlay bg-surface p-8">
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Title</label>
                 <input
@@ -127,7 +127,7 @@ const EditEventPage = () => {
               />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Event date</label>
                 <input
@@ -147,7 +147,7 @@ const EditEventPage = () => {
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Ticket price</label>
                 <input
@@ -183,7 +183,7 @@ const EditEventPage = () => {
                 100 emails free. Above 100 emails, ₹10 per additional email.
               </p>
               {form.sendTicketEmails && (
-                <div className="mt-4 grid gap-4 md:grid-cols-2 items-end">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 items-end">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Extra email credits</label>
                     <input

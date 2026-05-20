@@ -86,7 +86,7 @@ const EventCard = ({ event, onClick, onDelete, onShare }) => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-4 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-4 text-xs">
         <div className="p-2 bg-surface-overlay rounded">
           <p className="text-gray-500">Registrations</p>
           <p className="font-semibold text-white">{event.currentRegistrations}/{event.maxCapacity || '∞'}</p>

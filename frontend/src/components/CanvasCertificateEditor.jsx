@@ -116,8 +116,8 @@ function ExportPanel({ onClose, storeState, template, registrations, eventName }
   const hasRecipients = registrations?.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-gray-800 rounded-xl shadow-2xl w-[460px] border border-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-gray-800 rounded-xl shadow-2xl w-full sm:max-w-md border border-gray-700">
         <div className="flex items-center justify-between p-5 border-b border-gray-700">
           <div>
             <h2 className="text-lg font-bold text-white">Export Certificate</h2>
@@ -133,7 +133,7 @@ function ExportPanel({ onClose, storeState, template, registrations, eventName }
         <div className="p-5 space-y-5">
           <div>
             <p className="text-sm font-semibold text-gray-300 mb-2">Format</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
                 { id:'pdf',       label:'PDF',         desc:'Best for sharing' },
                 { id:'jpg',       label:'JPG',         desc:'Compressed image' },

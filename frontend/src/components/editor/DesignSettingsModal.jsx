@@ -28,8 +28,8 @@ export default function DesignSettingsModal({ store, storeState, onClose }) {
   const update = (updates) => store.getState().updateDesignConfig(updates);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[85vh] overflow-y-auto border border-gray-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-gray-800 rounded-xl shadow-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto border border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-700">
           <h2 className="text-lg font-bold text-white">Design Settings</h2>
@@ -42,7 +42,7 @@ export default function DesignSettingsModal({ store, storeState, onClose }) {
           {/* Background */}
           <div>
             <p className="text-sm font-semibold text-gray-300 mb-3">Background</p>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               {BG_PRESETS.map((preset) => (
                 <button
                   key={preset.label}
@@ -93,7 +93,7 @@ export default function DesignSettingsModal({ store, storeState, onClose }) {
           {/* Border */}
           <div>
             <p className="text-sm font-semibold text-gray-300 mb-3">Border</p>
-            <div className="grid grid-cols-4 gap-1 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 mb-3">
               {BORDER_STYLES.map(bs => (
                 <button
                   key={bs.id}
