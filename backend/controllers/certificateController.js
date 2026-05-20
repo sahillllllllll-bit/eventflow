@@ -244,15 +244,12 @@ export const downloadCertificatePDF = async (req, res) => {
       return res.status(404).json({ error: 'Certificate not found' });
     }
 
-    if (!cert.templateId) {
-      return res.status(404).json({ error: 'Certificate template not found' });
-    }
-
     if (!cert.eventId) {
       return res.status(404).json({ error: 'Certificate event not found' });
     }
 
-    const template = cert.templateId;
+    // Use the saved certificateData snapshot to maintain template consistency
+    const templateSnapshot = cert.certificateData || {};
     const event = cert.eventId;
 
     // Return complete certificate data with template for client-side rendering
@@ -266,16 +263,16 @@ export const downloadCertificatePDF = async (req, res) => {
         certificateData: cert.certificateData,
       },
       template: {
-        _id: template._id,
-        templateName: template.templateName,
-        backgroundColor: template.backgroundColor,
-        backgroundGradient: template.backgroundGradient,
-        borderStyle: template.borderStyle,
-        borderColor: template.borderColor,
-        borderWidth: template.borderWidth,
-        customElements: template.customElements,
-        designConfig: template.designConfig,
-        organizerName: template.organizerName,
+        _id: templateSnapshot._id,
+        templateName: templateSnapshot.templateName,
+        backgroundColor: templateSnapshot.backgroundColor,
+        backgroundGradient: templateSnapshot.backgroundGradient,
+        borderStyle: templateSnapshot.borderStyle,
+        borderColor: templateSnapshot.borderColor,
+        borderWidth: templateSnapshot.borderWidth,
+        customElements: templateSnapshot.customElements,
+        designConfig: templateSnapshot.designConfig,
+        organizerName: templateSnapshot.organizerName,
       },
       event: {
         _id: event._id,
