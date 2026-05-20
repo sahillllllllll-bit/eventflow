@@ -311,6 +311,18 @@ export const generateCertificatesForEvent = async (
   const generatedCerts = [];
 
   for (const registration of registrations) {
+    // Check if a certificate already exists for this registration with the same template
+    const existingCert = await CertificateIssued.findOne({
+      registrationId: registration._id,
+      templateId,
+    });
+
+    if (existingCert) {
+      // Certificate already exists for this registration with this template, skip it
+      generatedCerts.push(existingCert);
+      continue;
+    }
+
     const uniqueCode = uuidv4().substring(0, 12).toUpperCase();
     const recipientName = registration.name || 'Participant';
 
