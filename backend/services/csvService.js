@@ -60,12 +60,27 @@ export const exportRegistrationsToCSV = async (registrations, eventTitle, formSe
       formSections.forEach(section => {
         if (section.type === 'heading' || section.type === 'divider') return;
 
-        const responseValue = reg.responses?.get(section.id) || '';
+        // Handle both Map and plain object responses
+        let responseValue = '';
+        if (reg.responses) {
+          if (reg.responses instanceof Map) {
+            responseValue = reg.responses.get(section.id) || '';
+          } else if (typeof reg.responses === 'object') {
+            responseValue = reg.responses[section.id] || '';
+          }
+        }
         record[`response_${section.id}`] = responseValue;
 
         // Add file URL if it's a file field
         if (section.type === 'file') {
-          const fileData = reg.fileUploads?.get(section.id);
+          let fileData = null;
+          if (reg.fileUploads) {
+            if (reg.fileUploads instanceof Map) {
+              fileData = reg.fileUploads.get(section.id);
+            } else if (typeof reg.fileUploads === 'object') {
+              fileData = reg.fileUploads[section.id];
+            }
+          }
           record[`file_${section.id}`] = fileData ? fileData.url : '';
         }
       });

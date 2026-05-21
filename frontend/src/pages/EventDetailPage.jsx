@@ -634,7 +634,7 @@ const EventDetailPage = () => {
                         <td className="py-3 px-4 text-gray-300">{reg.phone || '-'}</td>
                         <td className="py-3 px-4 text-gray-300 font-mono text-xs">{reg.ticketId}</td>
                         <td className="py-3 px-4">
-                          <StatusBadge status={reg.checkedIn ? 'paid' : 'pending'} />
+                          <StatusBadge status={reg.checkedIn ? 'Checked In' : 'pending'} />
                         </td>
                         <td className="py-3 px-4 text-gray-400 text-xs">
                           {new Date(reg.registeredAt).toLocaleDateString()}
@@ -663,7 +663,7 @@ const EventDetailPage = () => {
                         <p className="text-white font-medium text-sm">{reg.name}</p>
                         <p className="text-gray-400 text-xs mt-0.5">{reg.email}</p>
                       </div>
-                      <StatusBadge status={reg.checkedIn ? 'paid' : 'pending'} />
+                      <StatusBadge status={reg.checkedIn ? 'completed' : 'pending'} />
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>

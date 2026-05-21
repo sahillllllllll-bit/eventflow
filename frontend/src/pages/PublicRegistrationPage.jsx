@@ -59,7 +59,7 @@ const PublicRegistrationPage = () => {
 
         // Handle file uploads
         if (value instanceof File) {
-          submitFormData.append('files', value, key); // fieldname: key
+          submitFormData.append(key, value); // Use fieldId as fieldname, not 'files'
           filesAdded = true;
         } else if (value !== undefined && value !== null && value !== '') {
           // Add text responses
