@@ -46,7 +46,7 @@ const parseFormDataFields = (req, res, next) => {
   }
 };
 
-router.post('/', registrationLimiter, fileUploader.array('files', 10), parseFormDataFields, validateSchema(registerSchema), registerForEvent);
+router.post('/', registrationLimiter, fileUploader.any(), parseFormDataFields, validateSchema(registerSchema), registerForEvent);
 router.get('/event/:eventId', auth, getEventRegistrations);
 router.post('/checkin/:ticketId', auth, checkInAttendee);
 router.get('/export/:eventId', auth, exportRegistrationsCSV);
