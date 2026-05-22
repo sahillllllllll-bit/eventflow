@@ -92,7 +92,7 @@ const PayoutsPage = () => {
         <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-bold">Payouts & Earnings</h1>
-            <p className="text-gray-400 mt-1 text-sm">Track your event revenue and platform fees</p>
+            <p className="text-gray-400 mt-1 text-sm">Track your event revenue and payment gateway fees</p>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ const PayoutsPage = () => {
                 <div className="p-5 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-gray-400 text-sm font-medium">Platform Fee ({PLATFORM_FEE_PERCENT}%)</p>
+                      <p className="text-gray-400 text-sm font-medium">Payment gateway Fee ({PLATFORM_FEE_PERCENT}%)</p>
                       <p className="text-2xl sm:text-3xl font-bold mt-2 text-red-400">-₹{platformFee.toLocaleString()}</p>
                       <p className="text-xs text-gray-500 mt-2">Automatic deduction</p>
                     </div>
@@ -166,7 +166,7 @@ const PayoutsPage = () => {
                   <div>
                     <h3 className="font-semibold text-blue-300 mb-1 text-sm sm:text-base">Payout Information</h3>
                     <p className="text-sm text-blue-200/80">
-                      Payouts are processed to your registered bank account within 24–48 hours of your withdrawal request. A {PLATFORM_FEE_PERCENT}% platform fee is automatically deducted from gross earnings. Ensure your bank details are correct before requesting a withdrawal.
+                      Payouts are processed to your registered bank account within 24–48 hours of your withdrawal request. A {PLATFORM_FEE_PERCENT}% Payment Gateway fee is automatically deducted from gross earnings. Ensure your bank details are correct before requesting a withdrawal.
                     </p>
                   </div>
                 </div>
@@ -179,7 +179,7 @@ const PayoutsPage = () => {
                     <h2 className="text-lg sm:text-xl font-semibold">Withdraw Earnings</h2>
                     <p className="text-gray-400 text-sm mt-1">
                       Available: <span className="text-brand font-semibold">₹{netPayout.toLocaleString()}</span>
-                      {' '}(after {PLATFORM_FEE_PERCENT}% platform fee)
+                      {' '}(after {PLATFORM_FEE_PERCENT}% Payment Gateway fee)
                     </p>
                   </div>
                   {!showWithdrawForm && (
