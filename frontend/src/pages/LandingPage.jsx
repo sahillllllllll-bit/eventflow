@@ -63,39 +63,51 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-bg text-white">
       {/* Navigation */}
-      <nav className="border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-50 bg-bg/95 backdrop-blur">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2 text-xl sm:text-2xl font-bold">
-            <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-brand" />
-            <span>EventGlow</span>
-          </div>
-          <div className="flex gap-2 sm:gap-4">
-            {token ? (
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="px-4 sm:px-6 py-2 bg-brand hover:bg-brand-light text-white font-medium rounded-lg transition text-sm sm:text-base"
-              >
-                Dashboard
-              </button>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-3 sm:px-6 py-2 border border-brand text-brand hover:bg-brand/10 font-medium rounded-lg transition text-sm sm:text-base"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-3 sm:px-6 py-2 bg-brand hover:bg-brand-light text-white font-medium rounded-lg transition text-sm sm:text-base whitespace-nowrap"
-                >
-                  Get Started Free
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+     <nav className="border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-50 bg-bg/95 backdrop-blur">
+  <div className="max-w-7xl mx-auto flex justify-between items-center">
+    
+    {/* Logo + Text */}
+    <div className="flex items-center gap-3">
+      <img
+        src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
+        alt="EventGlow Logo"
+        className="h-10 sm:h-16 w-auto object-contain"
+      />
+
+      <span className="text-xl sm:text-2xl font-bold text-white">
+        EventGlow
+      </span>
+    </div>
+
+    {/* Right Side Buttons */}
+    <div className="flex gap-2 sm:gap-4">
+      {token ? (
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="px-4 sm:px-6 py-2 bg-brand hover:bg-brand-light text-white font-medium rounded-lg transition text-sm sm:text-base"
+        >
+          Dashboard
+        </button>
+      ) : (
+        <>
+          <Link
+            to="/login"
+            className="px-3 sm:px-6 py-2 border border-brand text-brand hover:bg-brand/10 font-medium rounded-lg transition text-sm sm:text-base"
+          >
+            Login
+          </Link>
+
+          <Link
+            to="/register"
+            className="px-3 sm:px-6 py-2 bg-brand hover:bg-brand-light text-white font-medium rounded-lg transition text-sm sm:text-base whitespace-nowrap"
+          >
+            Get Started Free
+          </Link>
+        </>
+      )}
+    </div>
+  </div>
+</nav>
 
       {/* Hero */}
       <section className="px-4 sm:px-6 py-16 sm:py-24 md:py-32 max-w-7xl mx-auto text-center">
