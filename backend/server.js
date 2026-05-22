@@ -32,74 +32,138 @@ app.use(helmet());
 app.use(mongoSanitize());
 app.use(xssClean());
 
-// CORS - Allow requests from frontend
+// ==================
+// CORS Configuration
+// ==================
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.CLIENT_URL,
-      'http://localhost:5173',
-      'http://localhost:3000',
-      // GitHub Codespaces
-      /app\.github\.dev$/,
-    ].filter(Boolean);
+    console.log('Incoming Origin:', origin);
 
-    if (!origin || allowedOrigins.some(ao => {
-      if (ao instanceof RegExp) {
-        return ao.test(origin);
-      }
-      return ao === origin;
-    })) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin
+    // (Postman, mobile apps, curl, server-to-server)
+    if (!origin) {
+      return callback(null, true);
     }
+
+    // Allow exact matches
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow all Vercel deployments
+    if (origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Allow GitHub Codespaces
+    if (origin.includes('.github.dev')) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
+
   credentials: true,
+
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+  ],
 };
 
+// Apply CORS
 app.use(cors(corsOptions));
 
-// Body parsing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 
-// Rate limiting
+// ==================
+// Body Parsing
+// ==================
+
+app.use(express.json({ limit: '50mb' }));
+
+app.use(
+  express.urlencoded({
+    limit: '50mb',
+    extended: true,
+  })
+);
+
+// ==================
+// Rate Limiting
+// ==================
+
 app.use('/api/', generalLimiter);
 
 // ==================
 // Routes
 // ==================
+
 app.use('/api/auth', authRoutes);
+
 app.use('/api/events', eventRoutes);
+
 app.use('/api/registrations', registrationRoutes);
+
 app.use('/api/promo', promoEmailRoutes);
+
 app.use('/api/payouts', payoutRoutes);
+
 app.use('/api/certificates', certificateRoutes);
 
-// Health check
+// ==================
+// Health Check
+// ==================
+
 app.get('/health', (req, res) => {
-  res.json({ success: true, message: 'Server is running' });
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+  });
 });
 
-// 404 handler
+// ==================
+// 404 Handler
+// ==================
+
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
+  });
 });
 
-// Error handler (must be last)
+// ==================
+// Global Error Handler
+// ==================
+
 app.use(errorHandler);
 
 // ==================
 // Database Connection
 // ==================
+
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventglow');
+    const mongoURI =
+      process.env.MONGO_URI ||
+      'mongodb://localhost:27017/eventglow';
+
+    const conn = await mongoose.connect(mongoURI);
+
     console.log(`MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MongoDB connection error:', error.message);
     process.exit(1);
   }
 };
@@ -107,13 +171,17 @@ const connectDB = async () => {
 // ==================
 // Start Server
 // ==================
+
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for GitHub Codespaces
+
+const HOST = process.env.HOST || '0.0.0.0';
 
 connectDB().then(() => {
   app.listen(PORT, HOST, () => {
     console.log(`Server running on ${HOST}:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(
+      `Environment: ${process.env.NODE_ENV || 'development'}`
+    );
     console.log(`Frontend URL: ${process.env.CLIENT_URL}`);
   });
 });
