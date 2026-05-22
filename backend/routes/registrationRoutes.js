@@ -13,7 +13,7 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Name required'),
   email: z.string().email('Invalid email'),
   phone: z.string().optional(),
-  responses: z.object({}).optional(),
+  responses: z.record(z.any()).optional(),
   consentPromoEmails: z.boolean().optional(),
 });
 

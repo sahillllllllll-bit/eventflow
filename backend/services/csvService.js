@@ -5,6 +5,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const normalizeMapLike = (value) => {
+  if (!value) return value;
+  if (typeof value.toObject === 'function') {
+    return value.toObject();
+  }
+  if (value instanceof Map) {
+    return Object.fromEntries(value.entries());
+  }
+  return value;
+};
+
 export const exportRegistrationsToCSV = async (registrations, eventTitle, formSections) => {
   try {
     // Build dynamic headers based on form sections
@@ -57,31 +68,18 @@ export const exportRegistrationsToCSV = async (registrations, eventTitle, formSe
       };
 
       // Add form responses and file URLs
+      const responses = normalizeMapLike(reg.responses) || {};
+      const fileUploads = normalizeMapLike(reg.fileUploads) || {};
+
       formSections.forEach(section => {
         if (section.type === 'heading' || section.type === 'divider') return;
 
-        // Handle both Map and plain object responses
-        let responseValue = '';
-        if (reg.responses) {
-          if (reg.responses instanceof Map) {
-            responseValue = reg.responses.get(section.id) || '';
-          } else if (typeof reg.responses === 'object') {
-            responseValue = reg.responses[section.id] || '';
-          }
-        }
+        const responseValue = responses[section.id] ?? '';
         record[`response_${section.id}`] = responseValue;
 
-        // Add file URL if it's a file field
         if (section.type === 'file') {
-          let fileData = null;
-          if (reg.fileUploads) {
-            if (reg.fileUploads instanceof Map) {
-              fileData = reg.fileUploads.get(section.id);
-            } else if (typeof reg.fileUploads === 'object') {
-              fileData = reg.fileUploads[section.id];
-            }
-          }
-          record[`file_${section.id}`] = fileData ? fileData.url : '';
+          const fileData = fileUploads[section.id] || null;
+          record[`file_${section.id}`] = fileData ? fileData.url || '' : '';
         }
       });
 

@@ -300,18 +300,30 @@ const EventDetailPage = () => {
 
   const publicUrl = `${window.location.origin}/e/${event.slug}`;
 
-  // Helper: get value from responses (Map or plain object)
-  const getResponseValue = (responses, key) => {
-    if (!responses) return null;
-    if (responses instanceof Map) return responses.get(key);
-    return responses[key];
+  // Helper: normalize Mongoose Map-like values and plain objects
+  const normalizeMapLike = (value) => {
+    if (!value) return null;
+    if (typeof value.toObject === 'function') {
+      return value.toObject();
+    }
+    if (value instanceof Map) {
+      return Object.fromEntries(value.entries());
+    }
+    return value;
   };
 
-  // Helper: get entries from responses or fileUploads (Map or plain object)
+  // Helper: get value from responses (Map-like or plain object)
+  const getResponseValue = (responses, key) => {
+    const normalized = normalizeMapLike(responses);
+    if (!normalized) return null;
+    return normalized[key];
+  };
+
+  // Helper: get entries from responses or fileUploads (Map-like or plain object)
   const getEntries = (mapOrObj) => {
-    if (!mapOrObj) return [];
-    if (mapOrObj instanceof Map) return Array.from(mapOrObj.entries());
-    return Object.entries(mapOrObj);
+    const normalized = normalizeMapLike(mapOrObj);
+    if (!normalized) return [];
+    return Object.entries(normalized);
   };
 
   return (
@@ -881,25 +893,29 @@ const EventDetailPage = () => {
                     {getEntries(selectedRegistration.fileUploads).map(([fieldId, fileData]) => {
                       const section = event?.formSections?.find((s) => s.id === fieldId);
                       const label = section?.label || fieldId;
+                      const url = typeof fileData === 'string' ? fileData : fileData?.url;
+                      const fileName = typeof fileData === 'string' ? 'Uploaded file' : fileData?.filename || 'Uploaded file';
                       return (
                         <div key={fieldId} className="bg-surface-overlay p-3 sm:p-4 rounded-lg">
                           <p className="text-xs text-gray-400 uppercase mb-2">{label}</p>
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <div className="min-w-0">
-                              <p className="text-white text-sm font-medium break-words">{fileData.filename || 'Uploaded file'}</p>
-                              <p className="text-gray-400 text-xs mt-1">
-                                {fileData.size ? `${(fileData.size / 1024).toFixed(2)} KB` : 'Size unknown'}
-                                {fileData.mimeType && ` · ${fileData.mimeType}`}
-                              </p>
+                              <p className="text-white text-sm font-medium break-words">{fileName}</p>
+                              {typeof fileData !== 'string' && (
+                                <p className="text-gray-400 text-xs mt-1">
+                                  {fileData.size ? `${(fileData.size / 1024).toFixed(2)} KB` : 'Size unknown'}
+                                  {fileData.mimeType && ` · ${fileData.mimeType}`}
+                                </p>
+                              )}
                             </div>
-                            {fileData.url && (
+                            {url && (
                               <a
-                                href={fileData.url}
+                                href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3 py-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded text-xs font-medium transition whitespace-nowrap"
                               >
-                                Download
+                                Open file
                               </a>
                             )}
                           </div>
