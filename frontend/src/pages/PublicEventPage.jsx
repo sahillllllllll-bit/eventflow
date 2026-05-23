@@ -232,6 +232,7 @@ const PublicEventPage = () => {
         .event-md-body .md-code { background: #1e1e2e; color: #a5f3fc; padding: 0.15em 0.5em; border-radius: 5px; font-family: monospace; font-size: 0.9em; }
         .event-md-body .md-link { color: #818cf8; text-decoration: underline; }
         .event-md-body .md-link:hover { color: #a5b4fc; }
+        .event-md-body .md-img { max-width: 100%; height: auto; border-radius: 8px; margin: 1.2rem 0; max-height: 600px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
         .event-md-body .md-blockquote {
           border-left: 3px solid #6C47FF;
           padding: 0.5rem 1rem;

@@ -537,3 +537,34 @@ export const uploadEventCover = async (req, res, next) => {
     next(error);
   }
 };
+
+export const uploadEventMarkdownImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // For generic uploads (no specific event), just require auth
+    // For event-specific uploads, verify authorization
+    const { id } = req.params;
+    if (id && id !== 'upload') {
+      const event = await Event.findById(id);
+      if (!event) {
+        return res.status(404).json({ success: false, message: 'Event not found' });
+      }
+
+      // Check authorization
+      if (event.organizer.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'Unauthorized to upload images for this event' });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl: req.file.secure_url,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
