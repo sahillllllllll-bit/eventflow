@@ -185,56 +185,44 @@ const MarkdownEditor = ({
     if (!file) return;
     setUploadingImage(true);
     try {
-      if (eventId) {
-        // Upload to backend (eventId available after creation)
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        const response = await fetch(`/api/v1/events/${eventId}/upload-markdown-image`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+      // Upload directly to Cloudinary using unsigned upload (no backend needed)
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+      if (!cloudName) {
+        console.error('Cloudinary cloud name not configured');
+        setUploadingImage(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'eventflow_markdown'); // Create this unsigned preset in Cloudinary dashboard
+      formData.append('folder', 'eventflow/markdown-images');
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Cloudinary upload error:', error);
+        throw new Error(error.error?.message || 'Upload failed');
+      }
+
+      const data = await response.json();
+      const imageUrl = data.secure_url;
+      const altText = file.name.split('.')[0].replace(/[^a-z0-9]/gi, ' ');
+      const markdownImage = `![${altText}](${imageUrl})`;
+
+      const ta = textareaRef.current;
+      if (ta) {
+        const start = ta.selectionStart;
+        const newVal = value.slice(0, start) + '\n' + markdownImage + '\n' + value.slice(start);
+        onChange(newVal);
+        requestAnimationFrame(() => {
+          ta.focus();
+          ta.setSelectionRange(start + markdownImage.length + 2, start + markdownImage.length + 2);
         });
-        
-        if (!response.ok) throw new Error('Upload failed');
-        const data = await response.json();
-        
-        const imageUrl = data.imageUrl;
-        const altText = file.name.split('.')[0].replace(/[^a-z0-9]/gi, ' ');
-        const markdownImage = `![${altText}](${imageUrl})`;
-        
-        const ta = textareaRef.current;
-        if (ta) {
-          const start = ta.selectionStart;
-          const newVal = value.slice(0, start) + '\n' + markdownImage + '\n' + value.slice(start);
-          onChange(newVal);
-          requestAnimationFrame(() => {
-            ta.focus();
-            ta.setSelectionRange(start + markdownImage.length + 2, start + markdownImage.length + 2);
-          });
-        }
-      } else {
-        // Use data URL for creation flow (before event exists)
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target.result;
-          const altText = file.name.split('.')[0].replace(/[^a-z0-9]/gi, ' ');
-          const markdownImage = `![${altText}](${dataUrl})`;
-          
-          const ta = textareaRef.current;
-          if (ta) {
-            const start = ta.selectionStart;
-            const newVal = value.slice(0, start) + '\n' + markdownImage + '\n' + value.slice(start);
-            onChange(newVal);
-            requestAnimationFrame(() => {
-              ta.focus();
-              ta.setSelectionRange(start + markdownImage.length + 2, start + markdownImage.length + 2);
-            });
-          }
-        };
-        reader.readAsDataURL(file);
       }
     } catch (error) {
       console.error('Image upload failed:', error);

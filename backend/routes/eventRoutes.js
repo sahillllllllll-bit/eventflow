@@ -55,6 +55,7 @@ const updateTeamMemberSchema = z.object({
 
 router.post('/', auth, validateSchema(createEventSchema), createEvent);
 router.get('/my', auth, getMyEvents);
+router.post('/upload-image', auth, getEventCoverUploader().single('image'), uploadEventMarkdownImage);
 router.get('/id/:id', auth, getEventById);
 router.get('/:slug', getEventBySlug);
 router.put('/:id', auth, updateEvent);
