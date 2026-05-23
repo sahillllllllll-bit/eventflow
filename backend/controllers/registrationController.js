@@ -39,43 +39,44 @@ export const registerForEvent = async (req, res, next) => {
     const ticketId = generateTicketId();
     const qrCode   = await generateQRCode(ticketId);
 
-    // ── Build responses Map ──────────────────────────────────
+    // ── Build responses object ──────────────────────────────
     // responses from client is a plain object { fieldId: value }
-    // We strip it safely so the Map doesn't choke on non-string values.
-    const responsesMap = new Map();
+    const responsesObj = {};
     if (responses && typeof responses === 'object') {
       for (const [key, value] of Object.entries(responses)) {
-        responsesMap.set(String(key), String(value ?? ''));
+        responsesObj[String(key)] = String(value ?? '');
       }
     }
 
     // ── Handle file uploads from Cloudinary ──────────────────
-    const fileUploadsMap = new Map();
+    const fileUploadsObj = {};
     if (req.files && Array.isArray(req.files)) {
       req.files.forEach((file) => {
         const fieldId = file.fieldname;
-        fileUploadsMap.set(fieldId, {
-          url: file.secure_url,
-          filename: file.original_filename,
-          size: file.bytes,
+        const url = file.secure_url || file.path || file.url || file.public_id || '';
+        const filename = file.original_filename || file.originalname || file.fieldname || 'uploaded-file';
+        fileUploadsObj[fieldId] = {
+          url,
+          filename,
+          size: file.bytes || file.size,
           mimeType: file.mimetype || file.resource_type,
           uploadedAt: new Date(),
-        });
+        };
       });
     }
 
     const registration = new Registration({
-      event:    eventId,
-      organizer: event.organizer,
+      event:        eventId,
+      organizer:    event.organizer,
       ticketId,
-      name:     name.trim(),
-      email:    email.trim().toLowerCase(),
-      phone:    phone ? phone.trim() : undefined,
-      responses: responsesMap,
-      fileUploads: fileUploadsMap,
+      name:         name.trim(),
+      email:        email.trim().toLowerCase(),
+      phone:        phone ? phone.trim() : undefined,
+      responses:    responsesObj,
+      fileUploads:  fileUploadsObj,
       qrCode,
       consentPromoEmails: consentPromoEmails !== false, // default true
-      paymentStatus: event.isPaid ? 'pending' : 'free',
+      paymentStatus:      event.isPaid ? 'pending' : 'free',
     });
 
     await registration.save();
