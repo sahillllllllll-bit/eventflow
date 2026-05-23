@@ -893,7 +893,9 @@ const EventDetailPage = () => {
                     {getEntries(selectedRegistration.fileUploads).map(([fieldId, fileData]) => {
                       const section = event?.formSections?.find((s) => s.id === fieldId);
                       const label = section?.label || fieldId;
-                      const url = typeof fileData === 'string' ? fileData : fileData?.url;
+                      const url = typeof fileData === 'string'
+                        ? fileData
+                        : fileData?.url || fileData?.path || fileData?.secure_url;
                       const fileName = typeof fileData === 'string' ? 'Uploaded file' : fileData?.filename || 'Uploaded file';
                       return (
                         <div key={fieldId} className="bg-surface-overlay p-3 sm:p-4 rounded-lg">

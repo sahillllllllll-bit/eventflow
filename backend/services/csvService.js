@@ -79,7 +79,7 @@ export const exportRegistrationsToCSV = async (registrations, eventTitle, formSe
 
         if (section.type === 'file') {
           const fileData = fileUploads[section.id] || null;
-          record[`file_${section.id}`] = fileData ? fileData.url || '' : '';
+          record[`file_${section.id}`] = fileData ? (fileData.url || fileData.path || fileData.secure_url || '') : '';
         }
       });
 
