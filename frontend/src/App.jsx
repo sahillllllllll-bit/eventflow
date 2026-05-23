@@ -23,6 +23,13 @@ import PublicRegistrationPage from './pages/PublicRegistrationPage.jsx';
 import AcceptInvitePage from './pages/AcceptInvitePage.jsx';
 import CheckInPage from './pages/CheckInPage.jsx';
 import TicketPage from './pages/TicketPage.jsx';
+import {
+  PrivacyPolicyPage,
+  TermsPage,
+  ContactPage,
+  RefundPolicyPage
+} from './pages/LegalPages';
+import PricingPage from './pages/PricingPage.jsx';
 
 function App() {
   return (
@@ -39,10 +46,16 @@ function App() {
           <Route path="/e/:slug" element={<PublicEventPage />} />
           <Route path="/e/:slug/register" element={<PublicRegistrationPage />} />
           <Route path="/ticket/:ticketId" element={<TicketPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms-and-conditions" element={<TermsPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/refund-policy" element={<RefundPolicyPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
 
           {/* Protected routes */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />
           <Route path="/dashboard/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+          <Route path="/dashboard/pricing" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
           <Route path="/dashboard/events/create" element={<ProtectedRoute><CreateEventPage /></ProtectedRoute>} />
           <Route path="/dashboard/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
           <Route path="/dashboard/events/:id/edit" element={<ProtectedRoute><EditEventPage /></ProtectedRoute>} />

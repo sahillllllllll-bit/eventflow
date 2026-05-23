@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import {  useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { Zap, Ticket, Mail, FileText, BarChart3, CheckCircle, ArrowRight, Award } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -218,10 +219,36 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <p className="mb-3 sm:mb-4 text-sm sm:text-base">&copy; 2024 EventGlow. Made for college events.</p>
           <div className="flex justify-center gap-4 sm:gap-6 text-xs sm:text-sm">
-            <a href="#" className="hover:text-gray-300 transition">Privacy</a>
-            <a href="#" className="hover:text-gray-300 transition">Terms</a>
-            <a href="#" className="hover:text-gray-300 transition">Contact</a>
-          </div>
+  
+              <Link
+                to="/privacy-policy"
+                className="hover:text-gray-300 transition"
+              >
+                Privacy
+              </Link>
+
+              <Link
+                to="/terms-and-conditions"
+                className="hover:text-gray-300 transition"
+              >
+                Terms
+              </Link>
+
+              <Link
+                to="/contact"
+                className="hover:text-gray-300 transition"
+              >
+                Contact
+              </Link>
+
+              <Link
+                to="/refund-policy"
+                className="hover:text-gray-300 transition"
+              >
+                Refund Policy
+              </Link>
+
+            </div>
         </div>
       </footer>
     </div>

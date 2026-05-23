@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
-import { Zap, BarChart3, Zap as Events, Mail, Award, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Zap, BarChart3, Zap as Events, Mail, Award, Settings, LogOut, Menu, X, DollarSign } from 'lucide-react';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -16,6 +16,8 @@ const Sidebar = () => {
     { path: '/dashboard/payouts', label: 'Payouts', icon: Zap },
     { path: '/dashboard/promo', label: 'Promo Emails', icon: Mail },
     { path: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { path: '/dashboard/pricing', label: 'Pricing', icon: DollarSign },
+
   ];
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
@@ -53,10 +55,19 @@ const Sidebar = () => {
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         {/* Logo */}
-        <div className="p-6 border-b border-surface-overlay flex items-center gap-3">
-          <Zap className="w-8 h-8 text-brand" />
-          <span className="text-xl font-bold hidden sm:inline">EventGlow</span>
-        </div>
+       <div className="p-6 border-b border-surface-overlay flex items-center gap-3">
+
+  <img
+    src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
+    alt="EventGlow Logo"
+    className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+  />
+
+  <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
+    EventGlow
+  </span>
+
+</div>
 
         {/* Nav Items */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
