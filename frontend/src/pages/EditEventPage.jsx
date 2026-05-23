@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventAPI } from '../api/endpoints.js';
 import useToast, { Toast } from '../hooks/useToast.jsx';
+import MarkdownEditor from '../components/MarkdownEditor.jsx';
 
 const EditEventPage = () => {
   const { id } = useParams();
@@ -109,11 +110,11 @@ const EditEventPage = () => {
 
             <div>
               <label className="block text-sm text-gray-400 mb-2">Description</label>
-              <textarea
+              <MarkdownEditor
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={4}
-                className="w-full rounded-2xl border border-surface-overlay bg-bg px-4 py-3 text-white focus:ring-2 focus:ring-brand"
+                onChange={(v) => setForm({ ...form, description: v })}
+                eventId={id}
+                minHeight="320px"
               />
             </div>
             <div>

@@ -62,8 +62,11 @@ export function markdownToHtml(md = '') {
   // Block quote
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>');
 
+  // Images — ![alt text](image-url)
+  html = html.replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1" class="md-img" />');
+
   // Paragraphs — wrap lines that aren't already block elements
-  const blockTags = /^<(h[1-6]|ul|ol|li|hr|blockquote|div)/;
+  const blockTags = /^<(h[1-6]|ul|ol|li|hr|blockquote|div|img)/;
   html = html
     .split('\n')
     .map((line) => {
@@ -80,17 +83,20 @@ export function markdownToHtml(md = '') {
 // ─── toolbar button definitions ─────────────────────────────────────────────
 const COLORS = ['#f87171', '#fb923c', '#facc15', '#4ade80', '#38bdf8', '#818cf8', '#e879f9', '#ffffff'];
 
-const ToolbarButton = ({ onClick, title, children, active }) => (
+const ToolbarButton = ({ onClick, title, children, active, disabled }) => (
   <button
     type="button"
     title={title}
     onClick={onClick}
+    disabled={disabled}
     className={`
       inline-flex items-center justify-center w-7 h-7 rounded text-xs font-medium
       transition-colors select-none
-      ${active
-        ? 'bg-brand text-white'
-        : 'text-gray-400 hover:text-white hover:bg-white/10'}
+      ${disabled
+        ? 'text-gray-600 cursor-not-allowed'
+        : active
+          ? 'bg-brand text-white'
+          : 'text-gray-400 hover:text-white hover:bg-white/10'}
     `}
   >
     {children}
@@ -105,10 +111,13 @@ const MarkdownEditor = ({
   onChange,
   placeholder = 'Write your event description, rules, schedule… Markdown supported.',
   minHeight = '260px',
+  eventId = null,
 }) => {
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [tab, setTab] = useState('write'); // 'write' | 'preview'
   const [colorOpen, setColorOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // ── wrap selection or insert at cursor ──────────────────────────────────
   const wrap = useCallback((before, after = before, defaultText = 'text') => {
@@ -170,6 +179,69 @@ const MarkdownEditor = ({
     onChange(newVal);
     setColorOpen(false);
     requestAnimationFrame(() => ta.focus());
+  };
+
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      if (eventId) {
+        // Upload to backend (eventId available after creation)
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch(`/api/v1/events/${eventId}/upload-markdown-image`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) throw new Error('Upload failed');
+        const data = await response.json();
+        
+        const imageUrl = data.imageUrl;
+        const altText = file.name.split('.')[0].replace(/[^a-z0-9]/gi, ' ');
+        const markdownImage = `![${altText}](${imageUrl})`;
+        
+        const ta = textareaRef.current;
+        if (ta) {
+          const start = ta.selectionStart;
+          const newVal = value.slice(0, start) + '\n' + markdownImage + '\n' + value.slice(start);
+          onChange(newVal);
+          requestAnimationFrame(() => {
+            ta.focus();
+            ta.setSelectionRange(start + markdownImage.length + 2, start + markdownImage.length + 2);
+          });
+        }
+      } else {
+        // Use data URL for creation flow (before event exists)
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target.result;
+          const altText = file.name.split('.')[0].replace(/[^a-z0-9]/gi, ' ');
+          const markdownImage = `![${altText}](${dataUrl})`;
+          
+          const ta = textareaRef.current;
+          if (ta) {
+            const start = ta.selectionStart;
+            const newVal = value.slice(0, start) + '\n' + markdownImage + '\n' + value.slice(start);
+            onChange(newVal);
+            requestAnimationFrame(() => {
+              ta.focus();
+              ta.setSelectionRange(start + markdownImage.length + 2, start + markdownImage.length + 2);
+            });
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (error) {
+      console.error('Image upload failed:', error);
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -250,6 +322,34 @@ const MarkdownEditor = ({
             <rect x="1" y="7" width="14" height="2" rx="1"/>
           </svg>
         </ToolbarButton>
+
+        {/* Image upload */}
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(e.target.files[0])}
+            className="hidden"
+          />
+          <ToolbarButton
+            title="Insert image"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+          >
+            {uploadingImage ? (
+              <svg className="animate-spin w-3.5 h-3.5" fill="currentColor" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="1" opacity="0.2"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                <circle cx="5" cy="5" r="1.5" fill="currentColor"/>
+                <path d="M2 11l4-4 2 2 6-6" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              </svg>
+            )}
+          </ToolbarButton>
+        </div>
 
         {/* Color picker */}
         <div className="relative">
@@ -344,6 +444,7 @@ const MarkdownEditor = ({
         .md-code { background: #1e1e2e; color: #a5f3fc; padding: 0.1em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.88em; }
         .md-link { color: #818cf8; text-decoration: underline; }
         .md-blockquote { border-left: 3px solid #6C47FF; padding: 0.3rem 0.8rem; margin: 0.6rem 0; color: #9ca3af; font-style: italic; background: rgba(108,71,255,0.07); border-radius: 0 6px 6px 0; }
+        .md-img { max-width: 100%; height: auto; border-radius: 6px; margin: 0.8rem 0; max-height: 600px; }
       `}</style>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   updateTeamMember,
   removeTeamMember,
   uploadEventCover,
+  uploadEventMarkdownImage,
 } from '../controllers/eventController.js';
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
@@ -60,6 +61,7 @@ router.put('/:id', auth, updateEvent);
 router.delete('/:id', auth, deleteEvent);
 router.post('/:id/publish', auth, publishEvent);
 router.post('/:id/upload-cover', auth, getEventCoverUploader().single('coverImage'), uploadEventCover);
+router.post('/:id/upload-markdown-image', auth, getEventCoverUploader().single('image'), uploadEventMarkdownImage);
 router.post('/:id/reminder', auth, validateSchema(z.object({ message: z.string().min(1, 'Message is required') })), sendReminderToRegistrants);
 router.post('/:id/team', auth, validateSchema(teamMemberSchema), inviteTeamMember);
 router.post('/team/accept/:token', auth, acceptTeamInvite);
