@@ -53,6 +53,13 @@ export const getOrganizerTransactions = async (organizerId, options = {}) => {
     if (endDate) query.createdAt.$lte = new Date(endDate);
   }
 
+  if (options.transactionType) {
+  // Support array (from income/expense filter) or single string
+  query.transactionType = Array.isArray(options.transactionType)
+    ? { $in: options.transactionType }
+    : options.transactionType;
+}
+
   const [transactions, total] = await Promise.all([
     Transaction.find(query)
       .populate('event', 'title slug')

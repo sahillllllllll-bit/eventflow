@@ -13,22 +13,20 @@ import {
 export const getTransactions = async (req, res, next) => {
   try {
     const organizerId = req.user.id;
-    const { page = 1, limit = 20, status, type, eventId, startDate, endDate } = req.query;
+    const { page = 1, limit = 20, status, type, types, eventId, startDate, endDate } = req.query;
 
     const result = await getOrganizerTransactions(organizerId, {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      status: status || null,
-      transactionType: type || null,
-      eventId: eventId || null,
-      startDate: startDate || null,
-      endDate: endDate || null,
+      page:            parseInt(page),
+      limit:           parseInt(limit),
+      status:          status || null,
+      // Support both single `type` and comma-separated `types`
+      transactionType: types ? types.split(',') : (type || null),
+      eventId:         eventId || null,
+      startDate:       startDate || null,
+      endDate:         endDate || null,
     });
 
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
+    res.status(200).json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
@@ -106,3 +104,4 @@ export const getWithdrawals = async (req, res, next) => {
     next(error);
   }
 };
+
