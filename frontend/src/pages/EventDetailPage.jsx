@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
-import { eventAPI, registrationAPI } from '../api/endpoints.js';
+import { eventAPI, registrationAPI, paymentAPI } from '../api/endpoints.js';
 import Sidebar from '../components/Sidebar.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
-import { Download, X, Eye, Menu } from 'lucide-react';
+import useRazorpay from '../hooks/useRazorpay.js';
+import { Download, X, Eye, Menu, IndianRupee, Loader, AlertTriangle } from 'lucide-react';
 
 const EventDetailPage = () => {
   const { id } = useParams();
   const { toasts, showToast, removeToast } = useToast();
 
   const { user } = useContext(AuthContext);
+  const { openCheckout } = useRazorpay();
+
   const [event, setEvent] = useState(null);
   const [registrations, setRegistrations] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -25,7 +28,6 @@ const EventDetailPage = () => {
   const [sendingReminder, setSendingReminder] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState(null);
-  // ← NEW: mobile sidebar toggle
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -65,19 +67,60 @@ const EventDetailPage = () => {
     }
   };
 
+  // ── Send Reminder with Razorpay payment gate ─────────────────
   const handleSendReminder = async () => {
     if (!reminderMessage.trim()) {
       showToast('Please enter a reminder message', 'error');
       return;
     }
+
+    const attendeeCount = event?.currentRegistrations || 0;
+    if (attendeeCount === 0) {
+      showToast('No registered attendees to send reminders to', 'error');
+      return;
+    }
+
+    const cost = parseFloat((attendeeCount * 0.20).toFixed(2));
+
     try {
       setSendingReminder(true);
-      const res = await eventAPI.sendReminder(id, { message: reminderMessage });
-      showToast(res.data.message || 'Reminder sent successfully', 'success');
+
+      // 1. Create Razorpay order for reminder emails
+      const orderRes = await paymentAPI.createOrder({
+        type:    'email_credits',
+        count:   attendeeCount,
+      });
+      const { order, amount } = orderRes.data;
+
+      // 2. Open Razorpay checkout
+      const paymentResponse = await openCheckout({
+        order,
+        amount,
+        name:        'EventGlow',
+        description: `Reminder email to ${attendeeCount} attendee${attendeeCount !== 1 ? 's' : ''} — ${event.title}`,
+      });
+
+      // 3. Verify payment
+      await paymentAPI.verifyPayment({
+        razorpay_order_id:   paymentResponse.razorpay_order_id,
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        razorpay_signature:  paymentResponse.razorpay_signature,
+      });
+
+      // 4. Payment verified — now send the reminder
+      const res = await eventAPI.sendReminder(id, {
+        message:   reminderMessage,
+        paymentId: paymentResponse.razorpay_payment_id,
+      });
+      showToast(res.data.message || `Reminder sent to ${attendeeCount} attendee${attendeeCount !== 1 ? 's' : ''}`, 'success');
       setReminderMessage('');
-    } catch (error) {
-      showToast(error?.response?.data?.message || 'Failed to send reminder', 'error');
-      console.error(error);
+
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to send reminder';
+      if (msg !== 'Payment cancelled') {
+        showToast(msg, 'error');
+      }
+      console.error(err);
     } finally {
       setSendingReminder(false);
     }
@@ -110,12 +153,10 @@ const EventDetailPage = () => {
     }
   };
 
-  // ─── FIXED CSV Export — includes ALL custom fields, responses, file URLs ──
   const handleExportCSV = async () => {
     try {
       setExportingCSV(true);
 
-      // Try API export first
       try {
         const response = await registrationAPI.exportCSV(id, {
           responseType: 'blob',
@@ -138,7 +179,6 @@ const EventDetailPage = () => {
         console.warn('API CSV export failed, building client-side CSV:', apiError);
       }
 
-      // Fetch ALL registrations for export
       const regRes = await registrationAPI.getEventRegistrations(id, { limit: 10000 });
       const allRegs = regRes.data.registrations || regRes.data || [];
 
@@ -147,12 +187,10 @@ const EventDetailPage = () => {
         return;
       }
 
-      // ── Collect base + all custom response keys + file upload keys ──
       const responseKeys = new Set();
       const fileKeys = new Set();
 
       allRegs.forEach((reg) => {
-        // responses can be a Map (if returned as object from JSON)
         const responses = reg.responses;
         if (responses) {
           if (responses instanceof Map) {
@@ -171,7 +209,6 @@ const EventDetailPage = () => {
         }
       });
 
-      // Build human-readable labels for custom fields using event.formSections
       const getFieldLabel = (fieldId) => {
         const section = event?.formSections?.find((s) => s.id === fieldId);
         return section?.label || fieldId;
@@ -300,35 +337,31 @@ const EventDetailPage = () => {
 
   const publicUrl = `${window.location.origin}/e/${event.slug}`;
 
-  // Helper: normalize Mongoose Map-like values and plain objects
   const normalizeMapLike = (value) => {
     if (!value) return null;
-    if (typeof value.toObject === 'function') {
-      return value.toObject();
-    }
-    if (value instanceof Map) {
-      return Object.fromEntries(value.entries());
-    }
+    if (typeof value.toObject === 'function') return value.toObject();
+    if (value instanceof Map) return Object.fromEntries(value.entries());
     return value;
   };
 
-  // Helper: get value from responses (Map-like or plain object)
   const getResponseValue = (responses, key) => {
     const normalized = normalizeMapLike(responses);
     if (!normalized) return null;
     return normalized[key];
   };
 
-  // Helper: get entries from responses or fileUploads (Map-like or plain object)
   const getEntries = (mapOrObj) => {
     const normalized = normalizeMapLike(mapOrObj);
     if (!normalized) return [];
     return Object.entries(normalized);
   };
 
+  // Derived: cost to send reminder to all current registrants
+  const attendeeCount  = event?.currentRegistrations || 0;
+  const reminderCost   = parseFloat((attendeeCount * 0.20).toFixed(2));
+
   return (
     <div className="min-h-screen bg-bg">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
@@ -336,17 +369,14 @@ const EventDetailPage = () => {
         />
       )}
 
-      {/* Sidebar — hidden on mobile unless open */}
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar />
       </div>
 
-      {/* Main content — offset on lg+ */}
       <div className="lg:ml-60 min-h-screen">
         {/* Header */}
         <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
-            {/* Mobile menu button */}
             <button
               className="lg:hidden mb-4 p-2 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay"
               onClick={() => setSidebarOpen(true)}
@@ -378,7 +408,7 @@ const EventDetailPage = () => {
           </div>
         </div>
 
-        {/* Tabs — horizontally scrollable on mobile */}
+        {/* Tabs */}
         <div className="bg-surface border-b border-surface-overlay overflow-x-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-8 min-w-max">
             {tabs.map((tab) => (
@@ -442,6 +472,8 @@ const EventDetailPage = () => {
                         Open registration page
                       </button>
                     </div>
+
+                    {/* ── Send Reminder Section ── */}
                     {(isOrganizer || isCoordinator) && (
                       <div className="mt-4 p-4 sm:p-6 bg-surface border border-border rounded-xl">
                         <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Send reminder email</h3>
@@ -455,18 +487,45 @@ const EventDetailPage = () => {
                           className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-brand focus:border-transparent resize-none text-sm"
                           placeholder="Write your reminder message here..."
                         />
+
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-gray-500">
-                            Reminder emails are sent only to registered attendees.
-                          </p>
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-gray-500">
+                              Reminder emails are sent only to registered attendees.
+                            </p>
+                            {attendeeCount > 0 && (
+                              <p className="text-xs text-gray-400">
+                                {attendeeCount} attendee{attendeeCount !== 1 ? 's' : ''} ×{' '}
+                                ₹0.20 ={' '}
+                                <span className="text-white font-semibold">₹{reminderCost.toFixed(2)}</span>
+                              </p>
+                            )}
+                          </div>
+
                           <button
                             onClick={handleSendReminder}
-                            disabled={sendingReminder}
-                            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-brand text-black font-semibold hover:bg-brand-dark disabled:opacity-50 text-sm"
+                            disabled={sendingReminder || attendeeCount === 0}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand text-white font-semibold hover:bg-brand-light disabled:opacity-50 disabled:cursor-not-allowed text-sm transition whitespace-nowrap"
                           >
-                            {sendingReminder ? 'Sending...' : 'Send reminder'}
+                            {sendingReminder ? (
+                              <>
+                                <Loader className="w-4 h-4 animate-spin" />
+                                Processing…
+                              </>
+                            ) : (
+                              <>
+                                <IndianRupee className="w-4 h-4" />
+                                Pay ₹{reminderCost.toFixed(2)} &amp; Send
+                              </>
+                            )}
                           </button>
                         </div>
+
+                        {attendeeCount === 0 && (
+                          <p className="mt-2 text-xs text-yellow-500">
+                            No registered attendees yet — reminder cannot be sent.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -548,6 +607,17 @@ const EventDetailPage = () => {
                 <aside className="space-y-6">
                   <div className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
                     <h3 className="font-semibold mb-4 text-sm sm:text-base">Team access</h3>
+                   <div className="flex items-center gap-3 rounded-2xl border border-yellow-300 bg-yellow-50 px-1 py-1 text-yellow-900 shadow-sm">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold tracking-wide">
+                          Feature Under Development
+                        </p>
+                      </div>
+                    </div>
                     <p className="text-gray-400 text-sm mb-4">Invite coordinators and members by email and assign access.</p>
                     <form onSubmit={handleInviteMember} className="space-y-4">
                       <div>
@@ -613,7 +683,7 @@ const EventDetailPage = () => {
             </div>
           )}
 
-          {/* ── Registrations Tab — shows ALL custom fields ── */}
+          {/* ── Registrations Tab ── */}
           {activeTab === 'registrations' && (
             <div className="space-y-4">
               <input
@@ -624,7 +694,6 @@ const EventDetailPage = () => {
                 className="w-full px-4 py-2.5 bg-surface border border-surface-overlay rounded-lg focus:ring-2 focus:ring-brand text-white placeholder-gray-500 text-sm"
               />
 
-              {/* Desktop table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -666,7 +735,6 @@ const EventDetailPage = () => {
                 </table>
               </div>
 
-              {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {registrations.map((reg) => (
                   <div key={reg._id} className="bg-surface border border-surface-overlay rounded-lg p-4 space-y-3">
@@ -691,7 +759,6 @@ const EventDetailPage = () => {
                         <p className="text-gray-300 mt-0.5">{new Date(reg.registeredAt).toLocaleDateString()}</p>
                       </div>
                     </div>
-                    {/* Show custom form responses inline on mobile */}
                     {getEntries(reg.responses).length > 0 && (
                       <div className="pt-2 border-t border-surface-overlay space-y-1">
                         {getEntries(reg.responses).map(([fieldId, value]) => {
@@ -800,11 +867,10 @@ const EventDetailPage = () => {
         ))}
       </div>
 
-      {/* ── Registration Details Modal — shows ALL custom fields + files ── */}
+      {/* ── Registration Details Modal ── */}
       {selectedRegistration && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-surface border border-surface-overlay rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-surface-overlay bg-surface">
               <h2 className="text-xl sm:text-2xl font-bold text-white">Registration Details</h2>
               <button
@@ -815,9 +881,7 @@ const EventDetailPage = () => {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="p-4 sm:p-6 space-y-6">
-              {/* Basic Information */}
               <div>
                 <h3 className="text-base sm:text-lg font-semibold text-gray-200 mb-4">Basic Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -866,7 +930,6 @@ const EventDetailPage = () => {
                 </div>
               </div>
 
-              {/* ── Custom Form Responses (Map or plain object) ── */}
               {getEntries(selectedRegistration.responses).length > 0 && (
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-gray-200 mb-4">Form Responses</h3>
@@ -885,7 +948,6 @@ const EventDetailPage = () => {
                 </div>
               )}
 
-              {/* ── File Uploads (Map or plain object) ── */}
               {getEntries(selectedRegistration.fileUploads).length > 0 && (
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-gray-200 mb-4">File Uploads</h3>
@@ -928,7 +990,6 @@ const EventDetailPage = () => {
                 </div>
               )}
 
-              {/* No custom fields */}
               {getEntries(selectedRegistration.responses).length === 0 &&
                 getEntries(selectedRegistration.fileUploads).length === 0 && (
                 <div className="text-center py-6">

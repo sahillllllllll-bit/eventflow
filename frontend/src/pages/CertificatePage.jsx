@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { certificateAPI } from '../api/endpoints.js';
+import { paymentAPI } from '../api/endpoints.js';
 import useToast, { Toast } from '../hooks/useToast.jsx';
+import useRazorpay from '../hooks/useRazorpay.js';
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,12 +15,16 @@ import {
   Calendar,
   MapPin,
   Users,
+  CheckCircle,
+  IndianRupee,
 } from 'lucide-react';
 import TemplateSelection from '../components/TemplateSelection.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import { getTemplateWithDecorations } from '../utils/prebuiltTemplates.js';
 import CanvasCertificateEditor from '../components/CanvasCertificateEditor.jsx';
 import { renderCertificateToDOM } from '../services/certificateRenderer.js';
+
+const CERT_PRICE_PER = 0.60; // ₹0.60 per certificate — matches PricingPage
 
 export default function CertificatePage() {
   const navigate = useNavigate();
@@ -37,6 +43,10 @@ export default function CertificatePage() {
   const [generatedCertificates, setGeneratedCertificates] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
+  // ── Payment state for Step 5 ─────────────────────────────────
+  const [certPaymentDone, setCertPaymentDone] = useState(false);
+  const [certPaymentId, setCertPaymentId]     = useState(null);
+
   useEffect(() => {
     fetchEvents();
     fetchPricing();
@@ -46,7 +56,6 @@ export default function CertificatePage() {
     try {
       setIsLoading(true);
       const response = await certificateAPI.getOrganizerEvents();
-      // response.data is the array returned by getOrganizerEventsWithCount
       setEvents(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       showToast(error.response?.data?.error || 'Failed to fetch events', 'error');
@@ -73,6 +82,9 @@ export default function CertificatePage() {
       setRegistrations(Array.isArray(response.data) ? response.data : []);
       setSelectedRegistrations([]);
       setSelectAll(false);
+      // Reset payment state when switching events
+      setCertPaymentDone(false);
+      setCertPaymentId(null);
       setStep(2);
     } catch (error) {
       showToast('Failed to fetch registrations', 'error');
@@ -103,6 +115,9 @@ export default function CertificatePage() {
       showToast('Please select at least one registration', 'error');
       return;
     }
+    // Reset payment if recipient count changes
+    setCertPaymentDone(false);
+    setCertPaymentId(null);
     setStep(3);
   };
 
@@ -181,6 +196,7 @@ export default function CertificatePage() {
         eventId: selectedEvent._id,
         selectedRegistrationIds: selectedRegistrations,
         autoSend,
+        paymentId: certPaymentId, // pass payment reference to backend
       });
       setGeneratedCertificates(response.data.certificates);
       fetchPricing();
@@ -214,7 +230,6 @@ export default function CertificatePage() {
 
           const { certificate, template, event } = response.data;
 
-          // Render certificate with proper styling
           const container = document.createElement('div');
           container.style.position = 'absolute';
           container.style.left = '-9999px';
@@ -236,7 +251,6 @@ export default function CertificatePage() {
             continue;
           }
 
-          // Wait for all images to load
           await waitForImagesToLoad(certCanvas);
 
           const canvas = await html2canvas(certCanvas, {
@@ -249,7 +263,6 @@ export default function CertificatePage() {
             logging: false,
           });
 
-          // Create PDF
           const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'px',
@@ -262,8 +275,7 @@ export default function CertificatePage() {
           document.body.removeChild(container);
           downloadCount++;
           console.log(`✓ Downloaded: ${cert.recipientName}`);
-          
-          // Add delay between downloads to ensure browser processes each one
+
           if (i < generatedCertificates.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1200));
           }
@@ -273,7 +285,6 @@ export default function CertificatePage() {
         }
       }
 
-      // Show detailed results
       if (failedCerts.length === 0) {
         showToast(`✓ Successfully downloaded all ${downloadCount} certificates!`, 'success');
       } else if (downloadCount > 0) {
@@ -307,7 +318,6 @@ export default function CertificatePage() {
 
   const STEPS = ['Select Event', 'Recipients', 'Template', 'Canvas Editor', 'Send'];
 
-  // ── Shared step header ───────────────────────────────────────────────────
   const StepHeader = ({ stepNum, title, onBack }) => (
     <div className="bg-surface border-b border-border px-4 sm:px-6 py-4 sm:py-5">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -337,7 +347,7 @@ export default function CertificatePage() {
       <Sidebar />
 
       <div className="lg:ml-60 min-h-screen">
-        {/* ── Step 1: Select Event ─────────────────────────────────────────── */}
+        {/* ── Step 1 ───────────────────────────────────────────────── */}
         {step === 1 && (
           <>
             <StepHeader stepNum={1} title="Certificate Generator" />
@@ -351,7 +361,7 @@ export default function CertificatePage() {
           </>
         )}
 
-        {/* ── Step 2: Select Recipients ────────────────────────────────────── */}
+        {/* ── Step 2 ───────────────────────────────────────────────── */}
         {step === 2 && (
           <>
             <StepHeader
@@ -374,7 +384,7 @@ export default function CertificatePage() {
           </>
         )}
 
-        {/* ── Step 3: Select Template ──────────────────────────────────────── */}
+        {/* ── Step 3 ───────────────────────────────────────────────── */}
         {step === 3 && (
           <>
             <StepHeader stepNum={3} title="Choose Certificate Template" onBack={() => setStep(2)} />
@@ -382,12 +392,12 @@ export default function CertificatePage() {
               onSelectTemplate={handleSelectTemplate}
               onCustomStart={handleCustomStart}
               registrationCount={selectedRegistrations.length}
-              eventName={selectedEvent?.title}  // ← title, not name
+              eventName={selectedEvent?.title}
             />
           </>
         )}
 
-        {/* ── Step 4: Canvas Editor ────────────────────────────────────────── */}
+        {/* ── Step 4 ───────────────────────────────────────────────── */}
         {step === 4 && (
           <CanvasCertificateEditor
             template={template}
@@ -397,17 +407,18 @@ export default function CertificatePage() {
             isLoading={isLoading}
             registrationCount={selectedRegistrations.length}
             registrations={registrations.filter((r) => selectedRegistrations.includes(r._id))}
-            eventName={selectedEvent?.title || ''}  // ← title, not name
+            eventName={selectedEvent?.title || ''}
           />
         )}
 
-        {/* ── Step 5: Send Certificates ────────────────────────────────────── */}
+        {/* ── Step 5 ───────────────────────────────────────────────── */}
         {step === 5 && (
           <>
             <StepHeader stepNum={5} title="Send Certificates" onBack={() => setStep(4)} />
             <div className="p-4 sm:p-6 max-w-7xl mx-auto">
               <SendCertificatesStep
                 event={selectedEvent}
+                eventId={selectedEvent?._id}
                 registrationCount={selectedRegistrations.length}
                 pricingInfo={pricingInfo}
                 generatedCertificates={generatedCertificates}
@@ -416,13 +427,16 @@ export default function CertificatePage() {
                 onDownloadAll={handleDownloadAll}
                 onSendEmails={handleSendEmails}
                 showToast={showToast}
+                // payment props
+                certPaymentDone={certPaymentDone}
+                setCertPaymentDone={setCertPaymentDone}
+                setCertPaymentId={setCertPaymentId}
               />
             </div>
           </>
         )}
       </div>
 
-      {/* Toasts */}
       <div className="fixed top-4 right-4 space-y-2 z-50">
         {toasts.map((toast) => (
           <Toast key={toast.id} message={toast.message} type={toast.type}
@@ -434,7 +448,6 @@ export default function CertificatePage() {
 }
 
 // ── Step 1: Select Event ──────────────────────────────────────────────────────
-// FIX: was using event.name — Event model uses event.title
 function SelectEventStep({ events, isLoading, onSelectEvent }) {
   if (isLoading) {
     return (
@@ -466,7 +479,6 @@ function SelectEventStep({ events, isLoading, onSelectEvent }) {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {events.map((event) => {
-          // ── KEY FIX: event.title (not event.name) ──────────────────────
           const title    = event.title || 'Untitled Event';
           const location = event.isOnline ? 'Online' : (event.venue || '—');
           const dateStr  = event.date
@@ -481,13 +493,8 @@ function SelectEventStep({ events, isLoading, onSelectEvent }) {
               onClick={() => onSelectEvent(event)}
               className="group bg-surface-raised border border-border hover:border-brand rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:shadow-brand/10"
             >
-              {/* Cover image or placeholder */}
               {event.coverImage ? (
-                <img
-                  src={event.coverImage}
-                  alt={title}
-                  className="w-full h-36 object-cover"
-                />
+                <img src={event.coverImage} alt={title} className="w-full h-36 object-cover" />
               ) : (
                 <div className="w-full h-36 bg-gradient-to-br from-brand/20 to-brand/5 flex items-center justify-center">
                   <Award className="w-10 h-10 text-brand/40" />
@@ -495,12 +502,9 @@ function SelectEventStep({ events, isLoading, onSelectEvent }) {
               )}
 
               <div className="p-5">
-                {/* Title */}
                 <h3 className="font-bold text-white text-lg leading-snug mb-3 group-hover:text-brand transition-colors line-clamp-2">
                   {title}
                 </h3>
-
-                {/* Meta */}
                 <div className="space-y-1.5 mb-4">
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-brand/60" />
@@ -511,8 +515,6 @@ function SelectEventStep({ events, isLoading, onSelectEvent }) {
                     <span className="truncate">{location}</span>
                   </div>
                 </div>
-
-                {/* Footer */}
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-sm text-gray-400">
                     <Users className="w-3.5 h-3.5 text-brand/60" />
@@ -556,7 +558,6 @@ function SelectRecipientsStep({
   return (
     <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
       <div className="p-6 border-b border-border">
-        {/* FIX: event.title not event.name */}
         <h2 className="text-xl font-bold text-white mb-1">{event?.title}</h2>
         <p className="text-gray-400 text-sm">Select which registrants will receive certificates</p>
       </div>
@@ -621,9 +622,24 @@ function SelectRecipientsStep({
   );
 }
 
+// ── Helper ────────────────────────────────────────────────────────────────────
+const waitForImagesToLoad = async (container) => {
+  const images = container.querySelectorAll('img');
+  const promises = Array.from(images).map((img) =>
+    new Promise((resolve) => {
+      if (img.complete) { resolve(); return; }
+      img.onload  = resolve;
+      img.onerror = resolve; // don't block on broken images
+      setTimeout(resolve, 5000);
+    })
+  );
+  await Promise.all(promises);
+};
+
 // ── Step 5: Send Certificates ─────────────────────────────────────────────────
 function SendCertificatesStep({
   event,
+  eventId,
   registrationCount,
   pricingInfo,
   generatedCertificates,
@@ -632,28 +648,58 @@ function SendCertificatesStep({
   onDownloadAll,
   onSendEmails,
   showToast,
+  // payment props from parent
+  certPaymentDone,
+  setCertPaymentDone,
+  setCertPaymentId,
 }) {
-  const [downloading, setDownloading] = React.useState(null);
+  const [downloading, setDownloading] = useState(null);
+  // Local payment loading/error state
+  const [payLoading, setPayLoading]   = useState(false);
+  const [payError, setPayError]       = useState('');
+  const { openCheckout }              = useRazorpay();
 
-  // Helper function to wait for all images to load
-  const waitForImagesToLoad = async (container) => {
-    const images = container.querySelectorAll('img');
-    const promises = Array.from(images).map((img) => {
-      return new Promise((resolve, reject) => {
-        if (img.complete) {
-          resolve();
-        } else {
-          img.onload = resolve;
-          img.onerror = reject;
-          // Set a timeout to avoid infinite waiting
-          setTimeout(reject, 5000);
-        }
-      });
-    });
+  const totalCost = parseFloat((registrationCount * CERT_PRICE_PER).toFixed(2));
+
+  const handlePay = async () => {
+    setPayLoading(true);
+    setPayError('');
     try {
-      await Promise.all(promises);
-    } catch (error) {
-      console.warn('Some images failed to load, proceeding anyway:', error);
+      // 1. Create order
+      const orderRes = await paymentAPI.createOrder({
+        type:    'certificates',
+        eventId: eventId,
+        count:   registrationCount,
+      });
+      const { order, amount } = orderRes.data;
+
+      // 2. Open Razorpay checkout
+      const paymentResponse = await openCheckout({
+        order,
+        amount,
+        name:        'EventGlow',
+        description: `${registrationCount} certificates — ${event?.title || 'Event'}`,
+      });
+
+      // 3. Verify
+      await paymentAPI.verifyPayment({
+        razorpay_order_id:   paymentResponse.razorpay_order_id,
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        razorpay_signature:  paymentResponse.razorpay_signature,
+      });
+
+      // 4. Mark paid
+      setCertPaymentDone(true);
+      setCertPaymentId(paymentResponse.razorpay_payment_id);
+      showToast('Payment successful! You can now generate certificates.', 'success');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Payment failed';
+      if (msg !== 'Payment cancelled') {
+        setPayError(msg);
+        showToast(msg, 'error');
+      }
+    } finally {
+      setPayLoading(false);
     }
   };
 
@@ -661,62 +707,54 @@ function SendCertificatesStep({
     try {
       setDownloading(certId);
       const response = await certificateAPI.downloadCertificatePDF(certId);
-      
+
       if (!response.data.success) {
         showToast('Failed to load certificate data', 'error');
         return;
       }
 
-      const { certificate, template, event } = response.data;
+      const { certificate, template, event: certEvent } = response.data;
 
-      // Render certificate with proper styling
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.left = '-9999px';
-      container.style.top = '-9999px';
+      container.style.top  = '-9999px';
       document.body.appendChild(container);
 
       renderCertificateToDOM(
         { name: certificate.recipientName, uniqueCode: certificate.uniqueCode },
         container,
         template,
-        { eventName: event.title, date: new Date(event.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) }
+        {
+          eventName: certEvent.title,
+          date: new Date(certEvent.date).toLocaleDateString('en-IN', {
+            year: 'numeric', month: 'long', day: 'numeric',
+          }),
+        }
       );
 
       const html2canvas = (await import('html2canvas')).default;
-      const certCanvas = container.querySelector('[data-certificate-canvas]');
+      const certCanvas  = container.querySelector('[data-certificate-canvas]');
 
-      if (!certCanvas) {
-        throw new Error('Failed to render certificate');
-      }
+      if (!certCanvas) throw new Error('Failed to render certificate');
 
-      // Wait for all images (QR codes, uploaded images) to load
       await waitForImagesToLoad(certCanvas);
 
       const canvas = await html2canvas(certCanvas, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
+        scale: 3, useCORS: true, allowTaint: true,
         backgroundColor: '#ffffff',
-        windowHeight: 744,
-        windowWidth: 1050,
-        logging: false,
+        windowHeight: 744, windowWidth: 1050, logging: false,
       });
 
       if (format === 'pdf') {
         const { jsPDF } = await import('jspdf');
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [1050, 744],
-        });
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, 1050, 744);
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1050, 744] });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1050, 744);
         pdf.save(response.data.fileName);
         showToast('PDF downloaded successfully!', 'success');
       } else if (format === 'jpg') {
         const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.href     = canvas.toDataURL('image/jpeg', 0.95);
         link.download = response.data.fileName.replace('.pdf', '.jpg');
         link.click();
         showToast('JPG downloaded successfully!', 'success');
@@ -731,6 +769,7 @@ function SendCertificatesStep({
     }
   };
 
+  // ── Before generation: show payment gate ────────────────────
   if (generatedCertificates.length === 0) {
     return (
       <div className="bg-surface-raised border border-border rounded-xl p-8">
@@ -741,25 +780,73 @@ function SendCertificatesStep({
           <strong className="text-white">{event?.title}</strong>.
         </p>
 
+        {/* Pricing info badge — unchanged from original */}
         {pricingInfo && (
           <div className="p-4 bg-brand/5 border border-brand/20 rounded-lg mb-6 text-sm text-gray-300">
-            <p>💳 Free certificates remaining: <strong className="text-white">{pricingInfo.freeRemaining ?? '—'}</strong></p>
+            <p>💳 Free certificates remaining:{' '}
+              <strong className="text-white">{pricingInfo.freeRemaining ?? '—'}</strong>
+            </p>
           </div>
         )}
 
+        {/* ── Payment gate ─────────────────────────────────────── */}
+        {!certPaymentDone ? (
+          <div className="mb-6 p-5 bg-surface-overlay border border-border rounded-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-300">Certificate generation cost</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {registrationCount} × ₹{CERT_PRICE_PER} per certificate
+                </p>
+              </div>
+              <p className="text-2xl font-bold text-white">₹{totalCost.toFixed(2)}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={payLoading || registrationCount === 0}
+              className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand hover:bg-brand-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
+            >
+              {payLoading ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                <>
+                  <IndianRupee className="w-4 h-4" />
+                  Pay ₹{totalCost.toFixed(2)} to Generate
+                </>
+              )}
+            </button>
+
+            {payError && (
+              <p className="text-xs text-red-400 text-center">{payError}</p>
+            )}
+          </div>
+        ) : (
+          /* ── Payment done: green badge + unlocked buttons ──── */
+          <div className="mb-6 flex items-center gap-2 px-4 py-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 font-medium text-sm">
+            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+            Payment successful — choose how to generate your certificates
+          </div>
+        )}
+
+        {/* Generate buttons — disabled until paid */}
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => onGenerateCertificates(false)}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-light disabled:opacity-50 text-white font-semibold rounded-lg transition"
+            disabled={isGenerating || !certPaymentDone}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
           >
             {isGenerating ? <Loader className="animate-spin w-4 h-4" /> : <Award className="w-4 h-4" />}
             {isGenerating ? 'Generating…' : 'Generate (Download Only)'}
           </button>
           <button
             onClick={() => onGenerateCertificates(true)}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold rounded-lg transition"
+            disabled={isGenerating || !certPaymentDone}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition"
           >
             {isGenerating ? <Loader className="animate-spin w-4 h-4" /> : <Mail className="w-4 h-4" />}
             {isGenerating ? 'Generating…' : 'Generate & Email Instantly'}
@@ -769,6 +856,7 @@ function SendCertificatesStep({
     );
   }
 
+  // ── After generation: certificate list (unchanged from original) ──
   return (
     <div className="bg-surface-raised border border-border rounded-xl p-8">
       <div className="flex items-center gap-3 mb-2">
@@ -800,7 +888,6 @@ function SendCertificatesStep({
         </button>
       </div>
 
-      {/* Certificate list */}
       <div className="mt-8 space-y-3">
         <p className="text-sm font-medium text-gray-400 mb-3">Generated certificates:</p>
         {generatedCertificates.map((cert) => (

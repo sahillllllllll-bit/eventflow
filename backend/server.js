@@ -16,10 +16,12 @@ import registrationRoutes from './routes/registrationRoutes.js';
 import promoEmailRoutes from './routes/promoEmailRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
+import { rawBodyMiddleware, webhookHandler } from './middleware/razorpayWebhook.js';
 
 const app = express();
 
@@ -121,6 +123,7 @@ app.use('/api/payouts', payoutRoutes);
 
 app.use('/api/certificates', certificateRoutes);
 
+app.use('/api/payments', paymentRoutes);
 // ==================
 // Health Check
 // ==================

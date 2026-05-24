@@ -56,7 +56,16 @@ export const payoutAPI = {
 
 // Payment APIs (Razorpay)
 export const paymentAPI = {
-  initiatePayment: (data) => axiosInstance.post('/payments/initiate', data),
+  /**
+   * Create a Razorpay order.
+   * @param {{ type: 'registration'|'email_credits'|'certificates', eventId?: string, count?: number }} data
+   */
+  createOrder: (data) => axiosInstance.post('/payments/create-order', data),
+ 
+  /**
+   * Verify payment signature after Razorpay checkout completes.
+   * @param {{ razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string }} data
+   */
   verifyPayment: (data) => axiosInstance.post('/payments/verify', data),
 };
 

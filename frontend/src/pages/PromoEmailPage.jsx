@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { eventAPI, promoAPI } from '../api/endpoints.js';
 import Sidebar from '../components/Sidebar.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
-import { Send, Calendar, Users } from 'lucide-react';
+import { Send, Calendar, Users, AlertTriangle } from 'lucide-react';
 
 const PromoEmailPage = () => {
   const { toasts, showToast, removeToast } = useToast();
@@ -87,6 +87,18 @@ const PromoEmailPage = () => {
           <div className="max-w-7xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-bold">Promo Emails</h1>
             <p className="text-gray-400 mt-1 text-sm">Send updates to past attendees</p>
+
+              <div className="flex items-center gap-3 rounded-2xl border border-yellow-300 bg-yellow-50 px-1 py-1 text-yellow-900 shadow-sm">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold tracking-wide">
+                          Feature Under Development
+                        </p>
+                      </div>
+                    </div>
           </div>
         </div>
 
