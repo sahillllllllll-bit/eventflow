@@ -1,6 +1,9 @@
 // backend/controllers/paymentController.js
 import { createRazorpayOrder, verifyPaymentSignature } from '../services/razorpayService.js';
+import { createTransaction } from '../services/transactionService.js';
+import { TRANSACTION_TYPES, TRANSACTION_STATUS } from '../models/Transaction.js';
 import Event from '../models/Event.js';
+import Registration from '../models/Registration.js';
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/payments/create-order
@@ -79,6 +82,7 @@ export const createOrder = async (req, res, next) => {
 export const verifyPayment = async (req, res, next) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const organizerId = req.user?.id;
 
     const valid = verifyPaymentSignature({
       orderId:   razorpay_order_id,
@@ -88,6 +92,29 @@ export const verifyPayment = async (req, res, next) => {
 
     if (!valid) {
       return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
+
+    // Log transaction for analytics and financial tracking
+    try {
+      // Get the original order to determine transaction type
+      // For now, we'll create a generic transaction record
+      // More detailed logic can be added based on order notes
+      if (organizerId) {
+        // Create a transaction record for organizer earnings
+        // This will be enhanced based on the payment type
+        await createTransaction({
+          organizer: organizerId,
+          razorpayPaymentId: razorpay_payment_id,
+          razorpayOrderId: razorpay_order_id,
+          transactionType: TRANSACTION_TYPES.TICKET_PURCHASE,
+          amount: 0, // Will be updated based on actual order data
+          description: 'Payment verified',
+          status: TRANSACTION_STATUS.COMPLETED,
+        });
+      }
+    } catch (txError) {
+      // Don't fail payment verification if transaction logging fails
+      console.error('Error logging transaction:', txError);
     }
 
     return res.status(200).json({

@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { payoutAPI, registrationAPI, eventAPI } from '../api/endpoints.js';
+import { payoutAPI, transactionAPI } from '../api/endpoints.js';
 import Sidebar from '../components/Sidebar.jsx';
+import FinanceCard from '../components/FinanceCard.jsx';
+import TransactionFeed from '../components/TransactionFeed.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
-import { IndianRupee, TrendingUp, AlertCircle, Menu, Clock, CheckCircle } from 'lucide-react';
+import {
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  CreditCard,
+  Wallet,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 
 const PayoutsPage = () => {
   const { toasts, showToast, removeToast } = useToast();
   const [payout, setPayout] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
   const [withdrawForm, setWithdrawForm] = useState({
     accountNumber: '',
     ifsc: '',
@@ -23,8 +37,15 @@ const PayoutsPage = () => {
   const fetchPayoutData = async () => {
     try {
       setLoading(true);
-      const response = await payoutAPI.getSummary();
-      setPayout(response.data.payoutSummary);
+      const [payoutRes, summaryRes] = await Promise.all([
+        payoutAPI.getSummary(),
+        transactionAPI.getSummary().catch(() => null), // Don't fail if transactions API is not ready
+      ]);
+
+      setPayout(payoutRes.data.payoutSummary);
+      if (summaryRes?.data?.data) {
+        setSummary(summaryRes.data.data);
+      }
     } catch (error) {
       showToast('Failed to load payout data', 'error');
       console.error(error);
@@ -37,9 +58,13 @@ const PayoutsPage = () => {
 
   // Derive financials from payout data
   const grossRevenue = payout?.totalEarned ?? 0;
-  const platformFee = payout?.platformFee ?? parseFloat((grossRevenue * PLATFORM_FEE_PERCENT / 100).toFixed(2));
-  const netPayout = payout?.netPayout ?? parseFloat((grossRevenue - platformFee).toFixed(2));
+  const gatewayFees = payout?.gatewayFees ?? 0;
+  const platformFees = payout?.platformFees ?? parseFloat((grossRevenue * PLATFORM_FEE_PERCENT / 100).toFixed(2));
+  const netPayout = payout?.netPayout ?? parseFloat((grossRevenue - platformFees).toFixed(2));
   const totalTickets = payout?.totalTickets ?? 0;
+  const pendingAmount = payout?.pendingAmount ?? 0;
+  const completedAmount = payout?.completedAmount ?? 0;
+  const totalTransactions = payout?.totalTransactions ?? 0;
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
@@ -62,6 +87,8 @@ const PayoutsPage = () => {
       showToast('Withdrawal request submitted! Funds will be transferred in 24–48 hours.', 'success');
       setShowWithdrawForm(false);
       setWithdrawForm({ accountNumber: '', ifsc: '', accountName: '' });
+      // Refresh data after withdrawal
+      setTimeout(() => fetchPayoutData(), 1500);
     } catch (error) {
       // If API doesn't exist yet, still show success-like message for demo
       showToast('Withdrawal request submitted! Funds will be transferred in 24–48 hours.', 'success');
@@ -77,7 +104,7 @@ const PayoutsPage = () => {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto"></div>
-          <p className="text-gray-400 mt-4">Loading payout information...</p>
+          <p className="text-gray-400 mt-4">Loading finance dashboard...</p>
         </div>
       </div>
     );
@@ -89,104 +116,152 @@ const PayoutsPage = () => {
 
       <div className="lg:ml-60 min-h-screen">
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6">
+        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl sm:text-3xl font-bold">Payouts & Earnings</h1>
-            <p className="text-gray-400 mt-1 text-sm">Track your event revenue and payment gateway fees</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold">Finance Dashboard</h1>
+                <p className="text-gray-400 mt-1 text-sm">Track earnings, fees, and payouts</p>
+              </div>
+              <button
+                onClick={() => fetchPayoutData()}
+                className="px-4 py-2 bg-brand/20 hover:bg-brand/30 text-brand border border-brand/30 rounded-lg transition text-sm font-medium"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-8">
           {payout ? (
             <>
-              {/* Earnings Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {/* Gross Revenue */}
-                <div className="p-5 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm font-medium">Gross Revenue</p>
-                      <p className="text-2xl sm:text-3xl font-bold mt-2">₹{grossRevenue.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-2">{totalTickets} tickets sold</p>
-                    </div>
-                    <div className="p-3 bg-green-500/20 rounded-lg">
-                      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
-                    </div>
-                  </div>
-                </div>
+              {/* Top Stats Cards */}
+              <section>
+                <h2 className="text-lg font-semibold mb-4">Financial Overview</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Gross Revenue */}
+                  <FinanceCard
+                    title="Gross Revenue"
+                    amount={grossRevenue}
+                    icon={TrendingUp}
+                    color="green"
+                    subtitle={`${totalTickets} tickets sold`}
+                    loading={loading}
+                  />
 
-                {/* Platform Fee */}
-                <div className="p-5 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm font-medium">Payment gateway Fee ({PLATFORM_FEE_PERCENT}%)</p>
-                      <p className="text-2xl sm:text-3xl font-bold mt-2 text-red-400">-₹{platformFee.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-2">Automatic deduction</p>
-                    </div>
-                    <div className="p-3 bg-red-500/20 rounded-lg">
-                      <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
-                    </div>
-                  </div>
-                </div>
+                  {/* Gateway Fees */}
+                  <FinanceCard
+                    title="Gateway Fees (Razorpay)"
+                    amount={gatewayFees}
+                    icon={CreditCard}
+                    color="red"
+                    subtitle="Automatic deduction"
+                    loading={loading}
+                  />
 
-                {/* Net Payout */}
-                <div className="p-5 sm:p-6 bg-surface border border-brand/30 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm font-medium">Net Payout</p>
-                      <p className="text-2xl sm:text-3xl font-bold mt-2 text-brand">₹{netPayout.toLocaleString()}</p>
-                      <p className="text-xs text-brand/80 mt-2">Ready to withdraw</p>
-                    </div>
-                    <div className="p-3 bg-brand/20 rounded-lg">
-                      <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-brand" />
-                    </div>
-                  </div>
+                  {/* Platform Fees */}
+                  <FinanceCard
+                    title="Platform Charges"
+                    amount={platformFees}
+                    icon={AlertCircle}
+                    color="amber"
+                    subtitle={`${PLATFORM_FEE_PERCENT}% of revenue`}
+                    loading={loading}
+                  />
                 </div>
+              </section>
 
-                {/* Status */}
-                <div className="p-5 sm:p-6 bg-surface border border-blue-500/30 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm font-medium">Status</p>
-                      <p className="text-lg font-bold mt-2 text-blue-400">Pending</p>
-                      <p className="text-xs text-blue-300/80 mt-2">Awaiting withdrawal</p>
-                    </div>
-                    <div className="p-3 bg-blue-500/20 rounded-lg">
-                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
-                    </div>
-                  </div>
+              {/* Secondary Stats */}
+              <section>
+                <h2 className="text-lg font-semibold mb-4">Withdrawal & Status</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Net Payout */}
+                  <FinanceCard
+                    title="Net Payout"
+                    amount={netPayout}
+                    icon={DollarSign}
+                    color="blue"
+                    subtitle="Ready to withdraw"
+                    loading={loading}
+                  />
+
+                  {/* Pending Amount */}
+                  <FinanceCard
+                    title="Pending Balance"
+                    amount={pendingAmount}
+                    icon={Clock}
+                    color="amber"
+                    subtitle={`${totalTransactions} total transactions`}
+                    loading={loading}
+                  />
+
+                  {/* Completed Withdrawals */}
+                  <FinanceCard
+                    title="Completed Withdrawals"
+                    amount={completedAmount}
+                    icon={CheckCircle}
+                    color="green"
+                    subtitle="Successfully processed"
+                    loading={loading}
+                  />
                 </div>
-              </div>
+              </section>
 
               {/* Info Card */}
-              <div className="p-4 sm:p-6 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-8">
+              <div className="p-4 sm:p-6 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <div className="flex gap-3 sm:gap-4">
                   <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-blue-300 mb-1 text-sm sm:text-base">Payout Information</h3>
+                    <h3 className="font-semibold text-blue-300 mb-1 text-sm sm:text-base">How Payouts Work</h3>
                     <p className="text-sm text-blue-200/80">
-                      Payouts are processed to your registered bank account within 24–48 hours of your withdrawal request. A {PLATFORM_FEE_PERCENT}% Payment Gateway fee is automatically deducted from gross earnings. Ensure your bank details are correct before requesting a withdrawal.
+                      Your net payout is calculated as: Gross Revenue − Gateway Fees − Platform Charges ({PLATFORM_FEE_PERCENT}%). Withdrawals are processed to your registered bank account within 24–48 hours. Ensure your bank details are correct before requesting a withdrawal.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* ── Withdrawal Section ── */}
-              <div className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg mb-8">
+              <section className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
-                    <h2 className="text-lg sm:text-xl font-semibold">Withdraw Earnings</h2>
-                    <p className="text-gray-400 text-sm mt-1">
-                      Available: <span className="text-brand font-semibold">₹{netPayout.toLocaleString()}</span>
-                      {' '}(after {PLATFORM_FEE_PERCENT}% Payment Gateway fee)
-                    </p>
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2">Withdraw Earnings</h2>
+                    <div className="flex items-center gap-2">
+                      <p className="text-gray-400 text-sm">
+                        Available Balance:
+                        {' '}
+                        <span className="inline-flex items-center gap-2">
+                          {showBalance ? (
+                            <>
+                              <span className="text-brand font-bold text-lg">₹{netPayout.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                              <button
+                                onClick={() => setShowBalance(false)}
+                                className="text-gray-400 hover:text-gray-300 transition"
+                              >
+                                <EyeOff className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-brand font-bold text-lg">••••••</span>
+                              <button
+                                onClick={() => setShowBalance(true)}
+                                className="text-gray-400 hover:text-gray-300 transition"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      </p>
+                    </div>
                   </div>
                   {!showWithdrawForm && (
                     <button
                       onClick={() => setShowWithdrawForm(true)}
                       disabled={netPayout <= 0}
-                      className="px-5 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                      className="px-6 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed text-sm whitespace-nowrap"
                     >
                       Request Withdrawal
                     </button>
@@ -241,16 +316,19 @@ const PayoutsPage = () => {
                         <label className="block text-sm text-gray-400 mb-2">Withdrawal Amount</label>
                         <div className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-brand font-semibold text-sm flex items-center gap-1">
                           <span className="text-gray-400">₹</span>
-                          {netPayout.toLocaleString()}
+                          {netPayout.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                           <span className="text-gray-500 font-normal text-xs ml-1">(full balance)</span>
                         </div>
                       </div>
                     </div>
-                        
+
                     <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => { setShowWithdrawForm(false); setWithdrawForm({ accountNumber: '', ifsc: '', accountName: '' }); }}
+                        onClick={() => {
+                          setShowWithdrawForm(false);
+                          setWithdrawForm({ accountNumber: '', ifsc: '', accountName: '' });
+                        }}
                         className="px-5 py-3 border border-surface-overlay text-white rounded-lg hover:bg-surface-overlay transition text-sm"
                       >
                         Cancel
@@ -275,16 +353,13 @@ const PayoutsPage = () => {
                     </div>
                   </form>
                 )}
-              </div>
+              </section>
 
-              {/* Payout History */}
-              <div className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">Recent Transactions</h2>
-                <div className="text-center py-10 sm:py-12 text-gray-400">
-                  <p className="mb-2 text-sm">No transactions yet</p>
-                  <p className="text-xs sm:text-sm text-gray-500">Your payout history will appear here after your first withdrawal.</p>
-                </div>
-              </div>
+              {/* Recent Transactions */}
+              <section>
+                <h2 className="text-lg font-semibold mb-4">Transaction Activity</h2>
+                <TransactionFeed organizerId={null} />
+              </section>
             </>
           ) : (
             <div className="text-center py-12">
@@ -299,9 +374,9 @@ const PayoutsPage = () => {
         {toasts.map((toast) => (
           <Toast
             key={toast.id}
-            message={toast.message}
             type={toast.type}
-            onClose={() => removeToast(toast.id)}
+            message={toast.message}
+            onRemove={() => removeToast(toast.id)}
           />
         ))}
       </div>
