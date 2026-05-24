@@ -54,6 +54,15 @@ export const payoutAPI = {
   getSummary: () => axiosInstance.get('/payouts'),
 };
 
+// Transaction APIs
+export const transactionAPI = {
+  getTransactions: (params) => axiosInstance.get('/transactions', { params }),
+  getSummary: () => axiosInstance.get('/transactions/summary'),
+  getByType: () => axiosInstance.get('/transactions/by-type'),
+  getTrends: (params) => axiosInstance.get('/transactions/trends', { params }),
+  getWithdrawals: () => axiosInstance.get('/transactions/withdrawals'),
+};
+
 // Payment APIs (Razorpay)
 export const paymentAPI = {
   /**

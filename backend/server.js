@@ -17,6 +17,7 @@ import promoEmailRoutes from './routes/promoEmailRoutes.js';
 import payoutRoutes from './routes/payoutRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -120,6 +121,8 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/promo', promoEmailRoutes);
 
 app.use('/api/payouts', payoutRoutes);
+
+app.use('/api/transactions', transactionRoutes);
 
 app.use('/api/certificates', certificateRoutes);
 
