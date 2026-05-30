@@ -1,8 +1,10 @@
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 /**
- * Converts an HTML string into a PDF Buffer using Puppeteer (headless Chrome).
- * Works on Windows (local) and Render/Linux (production) — no system install needed.
+ * Converts an HTML string into a PDF Buffer.
+ * Uses @sparticuz/chromium + puppeteer-core — works on Render free tier,
+ * serverless, and Windows/Mac locally.
  *
  * @param {string} html - Full HTML string
  * @returns {Promise<Buffer>} - PDF as a Buffer
@@ -12,23 +14,20 @@ export const generatePDFFromHTML = async (html) => {
 
   try {
     browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',   // required on Render free tier
-        '--disable-gpu',
-      ],
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+      defaultViewport: chromium.defaultViewport,
     });
 
     const page = await browser.newPage();
 
-    // Load HTML directly — base64 images in <img src="data:..."> render fine
+    // Load HTML directly — base64 images render fine
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
     const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,   // renders background colors/gradients
+      format:          'A4',
+      printBackground: true,
       margin: {
         top:    '10mm',
         bottom: '10mm',
@@ -39,7 +38,7 @@ export const generatePDFFromHTML = async (html) => {
 
     return Buffer.from(pdfBuffer);
   } catch (error) {
-    console.error('[TicketPDF] Puppeteer error:', error.message);
+    console.error('[TicketPDF] Error:', error.message);
     throw error;
   } finally {
     if (browser) await browser.close();

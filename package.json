@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@getbrevo/brevo": "^5.0.4",
-    "puppeteer": "^24.43.1"
-  }
-}
