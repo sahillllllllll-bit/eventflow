@@ -145,6 +145,7 @@ export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
 // ─── 4. Ticket Confirmation (QR as base64 attachment) ─────────────────────────
 // NOTE: Brevo HTTP API does not support inline CID images.
 // The QR code is sent as a downloadable attachment instead.
+// ─── 4. Ticket Confirmation (QR displayed inline) ────────────────────────────
 export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
   const {
     eventTitle,
@@ -174,56 +175,119 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     to: email,
     subject: `Your ticket for ${eventTitle} ✅`,
     html: emailWrapper(`
-      <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">You're registered! 🎟️</h2>
-      <p style="margin:0 0 24px;color:#aaa;">Hi <strong style="color:#fff">${attendeeName}</strong>, your spot is confirmed.</p>
+      <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">
+        You're registered! 🎟️
+      </h2>
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+      <p style="margin:0 0 24px;color:#aaa;">
+        Hi <strong style="color:#fff">${attendeeName}</strong>, your spot is confirmed.
+      </p>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:28px;">
         <tr>
           <td style="padding:20px 24px;border-bottom:1px solid #2a2a2a;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Event</p>
-            <p style="margin:0;font-size:17px;font-weight:700;color:#fff;">${eventTitle}</p>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+              Event
+            </p>
+
+            <p style="margin:0;font-size:17px;font-weight:700;color:#fff;">
+              ${eventTitle}
+            </p>
           </td>
         </tr>
+
         <tr>
           <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
-            <table width="100%"><tr>
-              <td width="50%">
-                <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Date</p>
-                <p style="margin:0;font-size:14px;color:#ddd;">${formattedDate}</p>
-              </td>
-              <td width="50%">
-                <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Time</p>
-                <p style="margin:0;font-size:14px;color:#ddd;">${eventTime || 'TBA'}</p>
-              </td>
-            </tr></table>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%">
+                  <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+                    Date
+                  </p>
+
+                  <p style="margin:0;font-size:14px;color:#ddd;">
+                    ${formattedDate}
+                  </p>
+                </td>
+
+                <td width="50%">
+                  <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+                    Time
+                  </p>
+
+                  <p style="margin:0;font-size:14px;color:#ddd;">
+                    ${eventTime || 'TBA'}
+                  </p>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
+
         <tr>
           <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Location</p>
-            <p style="margin:0;font-size:14px;color:#ddd;">${eventLocation || 'TBA'}</p>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+              Location
+            </p>
+
+            <p style="margin:0;font-size:14px;color:#ddd;">
+              ${eventLocation || 'TBA'}
+            </p>
           </td>
         </tr>
+
         <tr>
           <td style="padding:16px 24px;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Ticket ID</p>
-            <p style="margin:0;font-size:15px;font-weight:700;color:${eventColor};font-family:monospace;">${ticketId}</p>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+              Ticket ID
+            </p>
+
+            <p style="margin:0;font-size:15px;font-weight:700;color:${eventColor};font-family:monospace;">
+              ${ticketId}
+            </p>
           </td>
         </tr>
       </table>
 
-      <p style="color:#aaa;font-size:13px;text-align:center;">
-        Your QR code is attached to this email as <strong style="color:#ccc">ticket-${ticketId}-qr.png</strong>.<br/>
-        Download and show it at the venue for check-in.
-      </p>
+      <!-- QR SECTION -->
+      <div style="text-align:center;margin:32px 0 10px;">
+        <p style="margin:0 0 18px;color:#aaa;font-size:14px;">
+          Show this QR code at the venue for check-in
+        </p>
+
+        <div style="
+          display:inline-block;
+          background:#ffffff;
+          padding:18px;
+          border-radius:16px;
+          border:1px solid #2a2a2a;
+        ">
+          <img
+            src="data:image/png;base64,${rawBase64}"
+            alt="Ticket QR Code"
+            width="220"
+            height="220"
+            style="
+              display:block;
+              border:0;
+              outline:none;
+              text-decoration:none;
+              width:220px;
+              height:220px;
+            "
+          />
+        </div>
+
+        <p style="
+          margin:18px 0 0;
+          color:#666;
+          font-size:12px;
+          letter-spacing:1px;
+        ">
+          Ticket ID: ${ticketId}
+        </p>
+      </div>
     `, eventColor),
-    attachments: [
-      {
-        filename: `ticket-${ticketId}-qr.png`,
-        content: Buffer.from(rawBase64, 'base64'),
-        contentType: 'image/png',
-      },
-    ],
   });
 };
 
