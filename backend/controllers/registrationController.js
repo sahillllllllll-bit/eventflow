@@ -5,7 +5,7 @@ import { generateQRCode } from '../services/qrService.js';
 import { sendTicketConfirmationEmail } from '../services/emailService.js';
 import { exportRegistrationsToCSV } from '../services/csvService.js';
 import { generateTicketHTML } from '../services/ticketGenerator.js';
-
+import { generatePDFFromHTML } from '../services/generateTicketPDF.js';
 // ─────────────────────────────────────────────────────────────
 //  POST /api/registrations
 //  Public — no auth required
@@ -335,3 +335,45 @@ export const exportRegistrationsCSV = async (req, res, next) => {
     next(error);
   }
 };
+
+export const downloadTicketPDF = async (req, res, next) => {
+  try {
+    const { ticketId } = req.params;
+ 
+    const registration = await Registration.findOne({ ticketId }).populate('event');
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+ 
+    const event = registration.event;
+ 
+    const eventTime = event.date
+      ? new Date(event.date).toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit', hour12: true,
+        })
+      : event.time || '';
+ 
+    const ticketHTML = generateTicketHTML({
+      ticketId:      registration.ticketId,
+      attendeeName:  registration.name,
+      eventTitle:    event.title,
+      eventDate:     event.date,
+      eventTime,
+      eventLocation: event.venue || event.meetLink || 'TBA',
+      qrCodeBase64:  registration.qrCode,   // full data:image/png;base64,... string
+      phone:         registration.phone,
+      email:         registration.email,
+      eventColor:    event.brandColor || '#6C47FF',
+    });
+ 
+    const pdfBuffer = await generatePDFFromHTML(ticketHTML);
+ 
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ticket-${ticketId}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.end(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+ 

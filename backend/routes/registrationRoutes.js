@@ -1,6 +1,6 @@
 import express from 'express';
 import { z } from 'zod';
-import { registerForEvent, getEventRegistrations, checkInAttendee, exportRegistrationsCSV, downloadTicket, getTicketDetails } from '../controllers/registrationController.js';
+import { registerForEvent, getEventRegistrations, checkInAttendee, exportRegistrationsCSV, downloadTicket, getTicketDetails,downloadTicketPDF } from '../controllers/registrationController.js';
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
 import { registrationLimiter } from '../middleware/rateLimiter.js';
@@ -52,5 +52,6 @@ router.post('/checkin/:ticketId', auth, checkInAttendee);
 router.get('/export/:eventId', auth, exportRegistrationsCSV);
 router.get('/ticket/:ticketId', getTicketDetails);
 router.get('/download/:ticketId', downloadTicket);
+router.get('/ticket/:ticketId/download-pdf', downloadTicketPDF);
 
 export default router;

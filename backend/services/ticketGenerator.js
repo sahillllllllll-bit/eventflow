@@ -1,6 +1,7 @@
 /**
  * Professional ticket generator for event registrations
- * Generates beautiful, production-quality ticket emails and downloadable HTML
+ * - generateTicketHTML : full standalone page (used for PDF generation & desktop view)
+ * - generateTicketEmailHTML : kept for reference but email now uses PDF attachment
  */
 
 export const generateTicketHTML = (ticketData) => {
@@ -11,540 +12,375 @@ export const generateTicketHTML = (ticketData) => {
     eventDate,
     eventTime,
     eventLocation,
-    eventImage,
-    qrCodeBase64,
+    qrCodeBase64,   // full data URI  e.g. "data:image/png;base64,..."
     phone,
     email,
     eventColor = '#6C47FF',
   } = ticketData;
 
-  // Format date and time
   const dateObj = new Date(eventDate);
-  const formattedDate = dateObj.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const formattedDate = isNaN(dateObj)
+    ? 'TBA'
+    : dateObj.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
 
-  return `
-<!DOCTYPE html>
+  // Ensure qrCodeBase64 is a full data URI
+  const qrSrc = qrCodeBase64
+    ? qrCodeBase64.startsWith('data:')
+      ? qrCodeBase64
+      : `data:image/png;base64,${qrCodeBase64}`
+    : '';
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Ticket - ${eventTitle}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 900px;
-            width: 100%;
-        }
-        
-        .email-wrapper {
-            background-color: #f8f9fa;
-            padding: 40px 20px;
-        }
-        
-        .ticket-container {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            margin-bottom: 30px;
-        }
-        
-        .ticket-header {
-            background: linear-gradient(135deg, ${eventColor} 0%, ${eventColor}dd 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        
-        .ticket-header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .ticket-header p {
-            font-size: 16px;
-            opacity: 0.95;
-        }
-        
-        .ticket-body {
-            padding: 40px 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-        
-        .ticket-info {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
-        
-        .ticket-qr {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-        }
-        
-        .qr-code-wrapper {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-        }
-        
-        .qr-code-wrapper img {
-            max-width: 250px;
-            height: auto;
-            display: block;
-        }
-        
-        .info-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .info-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #6c757d;
-            font-weight: 600;
-        }
-        
-        .info-value {
-            font-size: 18px;
-            font-weight: 600;
-            color: #212529;
-            word-break: break-word;
-        }
-        
-        .divider {
-            height: 1px;
-            background: #e9ecef;
-            margin: 10px 0;
-        }
-        
-        .attendee-name {
-            font-size: 24px;
-            font-weight: 700;
-            color: ${eventColor};
-            margin-bottom: 10px;
-        }
-        
-        .event-details {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .detail-item {
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-        }
-        
-        .detail-icon {
-            font-size: 24px;
-            color: ${eventColor};
-            min-width: 30px;
-            text-align: center;
-        }
-        
-        .detail-content {
-            flex: 1;
-        }
-        
-        .detail-content p {
-            margin: 4px 0;
-            line-height: 1.6;
-        }
-        
-        .detail-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #6c757d;
-            font-weight: 600;
-        }
-        
-        .detail-text {
-            font-size: 16px;
-            color: #212529;
-            font-weight: 500;
-        }
-        
-        .ticket-footer {
-            background: #f8f9fa;
-            padding: 20px 30px;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        
-        .ticket-id {
-            text-align: left;
-        }
-        
-        .ticket-id-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #6c757d;
-            letter-spacing: 0.5px;
-        }
-        
-        .ticket-id-value {
-            font-size: 16px;
-            font-weight: 700;
-            color: ${eventColor};
-            font-family: 'Courier New', monospace;
-            letter-spacing: 1px;
-        }
-        
-        .ticket-instructions {
-            font-size: 12px;
-            color: #6c757d;
-            text-align: right;
-            max-width: 300px;
-        }
-        
-        .email-message {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .email-greeting {
-            font-size: 18px;
-            color: #212529;
-            margin-bottom: 15px;
-        }
-        
-        .email-greeting strong {
-            color: ${eventColor};
-        }
-        
-        .email-text {
-            font-size: 14px;
-            color: #6c757d;
-            line-height: 1.8;
-            margin-bottom: 15px;
-        }
-        
-        .footer-text {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 13px;
-            color: #6c757d;
-            line-height: 1.8;
-        }
-        
-        .footer-text strong {
-            color: #212529;
-        }
-        
-        @media (max-width: 768px) {
-            .ticket-body {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-            
-            .ticket-footer {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .ticket-footer .ticket-id,
-            .ticket-footer .ticket-instructions {
-                text-align: center;
-            }
-            
-            .ticket-header h1 {
-                font-size: 24px;
-            }
-            
-            .attendee-name {
-                font-size: 20px;
-            }
-        }
-        
-        .badge {
-            display: inline-block;
-            background: ${eventColor};
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket – ${eventTitle}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, ${eventColor}33 0%, #0f0f0f 60%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px 48px;
+      color: #212529;
+    }
+
+    /* ── Card ── */
+    .ticket {
+      width: 100%;
+      max-width: 680px;
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+    }
+
+    /* ── Header ── */
+    .ticket-header {
+      background: ${eventColor};
+      padding: 36px 32px 28px;
+      text-align: center;
+    }
+    .ticket-header .brand {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 10px;
+    }
+    .ticket-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .ticket-header .admit {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+    }
+
+    /* ── Body ── */
+    .ticket-body {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0;
+    }
+
+    /* ── Info side ── */
+    .ticket-info {
+      padding: 28px 28px 28px 32px;
+      border-right: 2px dashed #e0e0e0;
+    }
+    .attendee {
+      font-size: 22px;
+      font-weight: 800;
+      color: ${eventColor};
+      margin-bottom: 22px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .detail-icon {
+      font-size: 18px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 2px;
+    }
+    .detail-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #222;
+      line-height: 1.4;
+    }
+
+    /* ── QR side ── */
+    .ticket-qr {
+      padding: 28px 28px 28px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-width: 190px;
+    }
+    .qr-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #999;
+      text-align: center;
+    }
+    .qr-wrapper {
+      background: #f4f4f4;
+      border: 2px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-wrapper img {
+      width: 150px;
+      height: 150px;
+      display: block;
+    }
+    .qr-id {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-family: 'Courier New', monospace;
+      color: ${eventColor};
+      text-align: center;
+      word-break: break-all;
+    }
+
+    /* ── Footer strip ── */
+    .ticket-footer {
+      background: #f8f8f8;
+      border-top: 1px solid #ebebeb;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .footer-id-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #aaa;
+      margin-bottom: 3px;
+    }
+    .footer-id-value {
+      font-size: 15px;
+      font-weight: 800;
+      font-family: 'Courier New', monospace;
+      color: ${eventColor};
+      letter-spacing: 1.5px;
+    }
+    .footer-note {
+      font-size: 11px;
+      color: #aaa;
+      text-align: right;
+    }
+
+    /* ── Download button (shown on web, hidden in PDF) ── */
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding: 13px 28px;
+      background: ${eventColor};
+      color: #fff;
+      text-decoration: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+    .download-btn:hover { opacity: 0.88; }
+
+    /* ── Copyright ── */
+    .copyright {
+      margin-top: 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      text-align: center;
+    }
+
+    /* ─────────── MOBILE ─────────── */
+    @media (max-width: 600px) {
+      body { padding: 20px 12px 40px; }
+
+      .ticket-header { padding: 28px 20px 22px; }
+      .ticket-header h1 { font-size: 20px; }
+
+      /* Stack info + QR vertically */
+      .ticket-body {
+        grid-template-columns: 1fr;
+      }
+      .ticket-info {
+        padding: 24px 20px 20px;
+        border-right: none;
+        border-bottom: 2px dashed #e0e0e0;
+      }
+      .ticket-qr {
+        padding: 24px 20px;
+        min-width: unset;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
+      .qr-wrapper img { width: 130px; height: 130px; }
+
+      .ticket-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .footer-note { text-align: left; }
+    }
+
+    /* ─────────── PDF print mode ─────────── */
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+        min-height: unset;
+      }
+      .download-btn, .copyright { display: none !important; }
+      .ticket {
+        box-shadow: none;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+        max-width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="email-wrapper">
-            <div class="email-message">
-                <div class="email-greeting">
-                    Welcome, <strong>${attendeeName}</strong>! 🎉
-                </div>
-                <div class="email-text">
-                    Your registration for <strong>${eventTitle}</strong> is confirmed! Your ticket is ready below. 
-                    Make sure to have this ticket with you at the event. You can download, screenshot, or print it.
-                </div>
-                <div class="email-text">
-                    <strong>Important:</strong> Arrive 15 minutes early. Save your QR code – you'll need it for check-in!
-                </div>
-            </div>
-            
-            <div class="ticket-container">
-                <div class="ticket-header">
-                    <h1>${eventTitle}</h1>
-                    <p>Admit One</p>
-                </div>
-                
-                <div class="ticket-body">
-                    <div class="ticket-info">
-                        <div class="attendee-name">${attendeeName}</div>
-                        
-                        <div class="event-details">
-                            <div class="detail-item">
-                                <div class="detail-icon">📅</div>
-                                <div class="detail-content">
-                                    <p class="detail-label">Date</p>
-                                    <p class="detail-text">${formattedDate}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="detail-item">
-                                <div class="detail-icon">🕐</div>
-                                <div class="detail-content">
-                                    <p class="detail-label">Time</p>
-                                    <p class="detail-text">${eventTime || 'TBA'}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="detail-item">
-                                <div class="detail-icon">📍</div>
-                                <div class="detail-content">
-                                    <p class="detail-label">Location</p>
-                                    <p class="detail-text">${eventLocation || 'See confirmation email'}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="detail-item">
-                                <div class="detail-icon">📞</div>
-                                <div class="detail-content">
-                                    <p class="detail-label">Contact</p>
-                                    <p class="detail-text">${phone || email}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="divider"></div>
-                        
-                        <div class="info-section">
-                            <div class="info-label">Ticket ID</div>
-                            <div class="info-value" style="font-family: 'Courier New', monospace; letter-spacing: 2px;">
-                                ${ticketId}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="ticket-qr">
-                        <div class="qr-code-wrapper">
-                            <img src="${qrCodeBase64}" alt="Event Ticket QR Code" />
-                        </div>
-                        <div style="text-align: center; font-size: 12px; color: #6c757d; margin-top: 10px;">
-                            <strong>Scan this code at check-in</strong>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="ticket-footer">
-                    <div class="ticket-id">
-                        <div class="ticket-id-label">Your Ticket</div>
-                        <div class="ticket-id-value">${ticketId}</div>
-                    </div>
-                    <div class="ticket-instructions">
-                        Save this ticket for check-in. Screenshot or print recommended.
-                    </div>
-                </div>
-            </div>
-            
-            <div class="footer-text">
-                <p><strong>Need help?</strong> Visit our website or reply to this email.</p>
-                <p style="margin-top: 15px; font-size: 12px;">
-                    © EventGlow ${new Date().getFullYear()} | All rights reserved
-                </p>
-            </div>
-        </div>
+
+  <div class="ticket">
+    <!-- Header -->
+    <div class="ticket-header">
+      <div class="brand">EventGlow</div>
+      <h1>${eventTitle}</h1>
+      <div class="admit">✦ Admit One ✦</div>
     </div>
+
+    <!-- Body -->
+    <div class="ticket-body">
+
+      <!-- Left: info -->
+      <div class="ticket-info">
+        <div class="attendee">${attendeeName}</div>
+
+        <div class="detail-row">
+          <div class="detail-icon">📅</div>
+          <div>
+            <div class="detail-label">Date</div>
+            <div class="detail-value">${formattedDate}</div>
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-icon">🕐</div>
+          <div>
+            <div class="detail-label">Time</div>
+            <div class="detail-value">${eventTime || 'TBA'}</div>
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-icon">📍</div>
+          <div>
+            <div class="detail-label">Location</div>
+            <div class="detail-value">${eventLocation || 'TBA'}</div>
+          </div>
+        </div>
+
+        ${phone || email ? `
+        <div class="detail-row">
+          <div class="detail-icon">📞</div>
+          <div>
+            <div class="detail-label">Contact</div>
+            <div class="detail-value">${phone || email}</div>
+          </div>
+        </div>` : ''}
+      </div>
+
+      <!-- Right: QR -->
+      <div class="ticket-qr">
+        <div class="qr-label">Scan at entry</div>
+        <div class="qr-wrapper">
+          ${qrSrc
+            ? `<img src="${qrSrc}" alt="QR Code" />`
+            : `<div style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;">No QR</div>`
+          }
+        </div>
+        <div class="qr-id">${ticketId}</div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="ticket-footer">
+      <div>
+        <div class="footer-id-label">Ticket ID</div>
+        <div class="footer-id-value">${ticketId}</div>
+      </div>
+      <div class="footer-note">Non-transferable · Keep this ticket safe</div>
+    </div>
+  </div>
+
+  <!-- Download button (web only, hidden in PDF) -->
+  <button class="download-btn" onclick="window.print()">
+    ⬇ Download / Print Ticket
+  </button>
+
+  <div class="copyright">© ${new Date().getFullYear()} EventGlow. All rights reserved.</div>
+
 </body>
-</html>
-  `;
+</html>`;
 };
 
-export const generateTicketEmailHTML = (ticketData) => {
-  const {
-    ticketId,
-    attendeeName,
-    eventTitle,
-    eventDate,
-    eventTime,
-    eventLocation,
-    qrCodeBase64,
-    phone,
-    email,
-    eventColor = '#6C47FF',
-  } = ticketData;
-
-  // Format date and time
-  const dateObj = new Date(eventDate);
-  const formattedDate = dateObj.toLocaleDateString('en-US', {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  return `
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif; background-color: #f8f9fa;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa;">
-        <tr>
-            <td align="center" style="padding: 40px 20px;">
-                <table width="100%" max-width="600px" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, ${eventColor} 0%, ${eventColor}dd 100%); color: white; padding: 40px 30px; text-align: center;">
-                            <h1 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 700;">${eventTitle}</h1>
-                            <p style="margin: 0; font-size: 14px; opacity: 0.95;">Admit One</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Message -->
-                    <tr>
-                        <td style="padding: 30px;">
-                            <p style="margin: 0 0 15px 0; font-size: 16px; color: #212529;">
-                                <strong>Welcome, ${attendeeName}! 🎉</strong>
-                            </p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #6c757d; line-height: 1.6;">
-                                Your registration for <strong>${eventTitle}</strong> is confirmed! Your ticket details are below.
-                            </p>
-                            <p style="margin: 0; font-size: 14px; color: #6c757d; line-height: 1.6;">
-                                <strong>💡 Tip:</strong> Screenshot or save this email. You'll need to scan the QR code at check-in.
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Ticket Details -->
-                    <tr>
-                        <td style="padding: 30px; background-color: #f8f9fa; border-top: 1px solid #e9ecef;">
-                            <table width="100%" cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td style="padding-bottom: 20px;">
-                                        <p style="margin: 0; font-size: 24px; font-weight: 700; color: ${eventColor};">${attendeeName}</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 15px 0; border-top: 1px solid #e9ecef; border-bottom: 1px solid #e9ecef;">
-                                        <table width="100%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td style="padding: 12px 0;">
-                                                    <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">📅 Date</p>
-                                                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #212529; font-weight: 500;">${formattedDate}</p>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding: 12px 0;">
-                                                    <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">🕐 Time</p>
-                                                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #212529; font-weight: 500;">${eventTime || 'TBA'}</p>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding: 12px 0;">
-                                                    <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">📍 Location</p>
-                                                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #212529; font-weight: 500;">${eventLocation || 'Check event details'}</p>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding: 12px 0;">
-                                                    <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">📞 Your Contact</p>
-                                                    <p style="margin: 4px 0 0 0; font-size: 15px; color: #212529; font-weight: 500;">${phone || email}</p>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 15px 0;">
-                                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">Ticket ID</p>
-                                        <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: 700; color: ${eventColor}; font-family: 'Courier New', monospace; letter-spacing: 2px;">${ticketId}</p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    
-                    <!-- QR Code -->
-                    <tr>
-                        <td style="padding: 30px; text-align: center; background-color: white;">
-                            <p style="margin: 0 0 15px 0; font-size: 13px; text-transform: uppercase; color: #6c757d; letter-spacing: 0.5px; font-weight: 600;">Your Check-In Code</p>
-                            <img src="${qrCodeBase64}" alt="QR Code" style="max-width: 220px; height: auto; display: inline-block; border: 2px solid #e9ecef; padding: 15px; border-radius: 8px; background-color: #f8f9fa;" />
-                            <p style="margin: 15px 0 0 0; font-size: 12px; color: #6c757d;">Scan this code at check-in</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="padding: 25px 30px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center;">
-                            <p style="margin: 0 0 15px 0; font-size: 13px; color: #6c757d; line-height: 1.6;">
-                                <strong>Important:</strong> Arrive early and have this email handy. Your ticket is non-transferable.
-                            </p>
-                            <p style="margin: 0; font-size: 12px; color: #999;">
-                                © EventGlow ${new Date().getFullYear()} | All rights reserved
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-  `;
-};
+// ─── generateTicketEmailHTML kept for backwards compat but not used ───────────
+// Email now sends a PDF attachment generated from generateTicketHTML.
+// If you still need a plain-HTML fallback, it's here.
+export const generateTicketEmailHTML = generateTicketHTML;
