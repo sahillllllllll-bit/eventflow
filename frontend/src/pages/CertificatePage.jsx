@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { certificateAPI } from '../api/endpoints.js';
 import { paymentAPI } from '../api/endpoints.js';
 import useToast, { Toast } from '../hooks/useToast.jsx';
+import DesktopNudge from '../components/DesktopNudge.jsx';
 import useRazorpay from '../hooks/useRazorpay.js';
 import {
   ChevronLeft,
@@ -346,6 +347,10 @@ export default function CertificatePage() {
     <div className="min-h-screen bg-bg text-white">
       <Sidebar />
 
+       <DesktopNudge
+    storageKey="certificate_nudge"
+    message="The certificate canvas editor needs more screen space. Open EventGlow on your laptop or desktop to design and send certificates easily."
+  />
       <div className="lg:ml-60 min-h-screen">
         {/* ── Step 1 ───────────────────────────────────────────────── */}
         {step === 1 && (
