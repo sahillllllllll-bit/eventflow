@@ -3,82 +3,104 @@ import { generateToken, generateOrganizerSlug, generateResetToken } from '../uti
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 import crypto from 'crypto';
 
-// ─── Sanitization helpers ────────────────────────────────────────────────────
+// ─── Sanitization helpers ─────────────────────────────────────────────────────
 
-/**
- * Strip HTML tags, null bytes, and trim whitespace.
- * MongoDB is not vulnerable to classic SQL injection, but we still sanitize
- * to prevent stored-XSS and NoSQL operator injection ($where, $gt, etc.).
- */
 const sanitizeField = (value, maxLength = 255) => {
   if (typeof value !== 'string') return '';
   return value
-    .replace(/\0/g, '')                        // strip null bytes
-    .replace(/<[^>]*>/g, '')                   // strip HTML tags
-    .replace(/[${}()]/g, '')                   // strip NoSQL injection operators
+    .replace(/\0/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[${}()]/g, '')
     .trim()
     .slice(0, maxLength);
 };
 
-/** Validate and normalize email */
 const sanitizeEmail = (value) => {
-  if (typeof value !== 'string') return '';
+  if (typeof value !== 'string') return null;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const trimmed = value.trim().toLowerCase().slice(0, 254);
   return emailRegex.test(trimmed) ? trimmed : null;
 };
 
-/** Validate phone: allow digits, +, -, spaces, parentheses only */
 const sanitizePhone = (value) => {
   if (!value) return '';
   if (typeof value !== 'string') return '';
   return value.replace(/[^0-9+\-\s()]/g, '').trim().slice(0, 20);
 };
 
-// ─── Controllers ─────────────────────────────────────────────────────────────
+// ─── Controllers ──────────────────────────────────────────────────────────────
 
 export const register = async (req, res, next) => {
   try {
     const { name, email, password, college, phone } = req.body;
 
-    // ── Sanitize inputs ──
+    // ── Step 1: Sanitize all inputs ──────────────────────────────
     const cleanName    = sanitizeField(name, 100);
     const cleanEmail   = sanitizeEmail(email);
     const cleanCollege = sanitizeField(college, 150);
     const cleanPhone   = sanitizePhone(phone);
 
-    // ── Validate required fields ──
+    // ── Step 2: Validate EVERYTHING before any DB write ──────────
+    // Name
     if (!cleanName || cleanName.length < 2) {
-      return res.status(400).json({ success: false, message: 'Valid name is required (min 2 characters)' });
+      return res.status(400).json({
+        success: false,
+        message: 'Full name is required (minimum 2 characters)',
+      });
     }
+
+    // Email
     if (!cleanEmail) {
-      return res.status(400).json({ success: false, message: 'Valid email address is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'A valid email address is required',
+      });
     }
+
+    // College
     if (!cleanCollege || cleanCollege.length < 2) {
-      return res.status(400).json({ success: false, message: 'Valid college name is required (min 2 characters)' });
+      return res.status(400).json({
+        success: false,
+        message: 'College name is required (minimum 2 characters)',
+      });
     }
+
+    // Password — must validate before any save
     if (!password || typeof password !== 'string') {
-      return res.status(400).json({ success: false, message: 'Password is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required',
+      });
     }
     if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters',
+      });
     }
     if (password.length > 128) {
-      return res.status(400).json({ success: false, message: 'Password must be under 128 characters' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be under 128 characters',
+      });
     }
 
-    // ── Check for existing user ──
+    // ── Step 3: Check for existing user ──────────────────────────
+    // Only hit the DB after all input validation passes
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
+      return res.status(400).json({
+        success: false,
+        message: 'Email already registered',
+      });
     }
 
-    // ── Create user ──
+    // ── Step 4: Create and save user ─────────────────────────────
     const organizerSlug = generateOrganizerSlug(cleanName);
     const user = new User({
       name:    cleanName,
       email:   cleanEmail,
-      password,           // raw — Mongoose pre-save hook will hash it
+      password,
       college: cleanCollege,
       phone:   cleanPhone,
       organizerSlug,
@@ -86,16 +108,26 @@ export const register = async (req, res, next) => {
 
     await user.save();
 
-    // ── Generate email verification token ──
+    // ── Step 5: Generate verification token ──────────────────────
     const verifyToken = crypto.randomBytes(32).toString('hex');
-    user.emailVerifyToken = crypto.createHash('sha256').update(verifyToken).digest('hex');
+    user.emailVerifyToken = crypto
+      .createHash('sha256')
+      .update(verifyToken)
+      .digest('hex');
     await user.save();
 
-    // ── Send verification email ──
-    const verifyLink = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`;
-    await sendVerificationEmail(cleanEmail, verifyLink);
+    // ── Step 6: Send verification email ──────────────────────────
+    // If email sending fails, the account still exists and the user
+    // can request a resend — do NOT delete the user over this.
+    try {
+      const verifyLink = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`;
+      await sendVerificationEmail(cleanEmail, verifyLink);
+    } catch (emailErr) {
+      console.error('Verification email failed to send:', emailErr.message);
+      // Continue — account is created, email can be resent later
+    }
 
-    // ── Generate JWT and respond ──
+    // ── Step 7: Return token ──────────────────────────────────────
     const token = generateToken(user._id);
 
     return res.status(201).json({
@@ -121,7 +153,10 @@ export const login = async (req, res, next) => {
     const cleanEmail = sanitizeEmail(email);
 
     if (!cleanEmail || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
     }
 
     const user = await User.findOne({ email: cleanEmail }).select('+password');
@@ -185,18 +220,24 @@ export const forgotPassword = async (req, res, next) => {
     const cleanEmail = sanitizeEmail(req.body.email);
 
     if (!cleanEmail) {
-      return res.status(400).json({ success: false, message: 'Valid email is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'A valid email address is required',
+      });
     }
 
     const user = await User.findOne({ email: cleanEmail });
+    // Same response whether user exists or not — prevents user enumeration
     if (!user) {
-      // Return same message to prevent user enumeration
-      return res.status(200).json({ success: true, message: 'Password reset link sent to your email' });
+      return res.status(200).json({
+        success: true,
+        message: 'Password reset link sent to your email',
+      });
     }
 
     const { token, hashedToken } = generateResetToken();
     user.resetPasswordToken  = hashedToken;
-    user.resetPasswordExpire = new Date(Date.now() + 3600000); // 1 hour
+    user.resetPasswordExpire = new Date(Date.now() + 3600000);
     await user.save();
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${token}`;
@@ -217,10 +258,16 @@ export const resetPassword = async (req, res, next) => {
     const { password } = req.body;
 
     if (!password || typeof password !== 'string' || password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters',
+      });
     }
     if (password.length > 128) {
-      return res.status(400).json({ success: false, message: 'Password must be under 128 characters' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be under 128 characters',
+      });
     }
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -230,7 +277,10 @@ export const resetPassword = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token',
+      });
     }
 
     user.password            = password;
@@ -238,7 +288,10 @@ export const resetPassword = async (req, res, next) => {
     user.resetPasswordExpire = undefined;
     await user.save();
 
-    return res.status(200).json({ success: true, message: 'Password reset successful' });
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successful',
+    });
   } catch (error) {
     next(error);
   }
@@ -252,14 +305,20 @@ export const verifyEmail = async (req, res, next) => {
     const user = await User.findOne({ emailVerifyToken: hashedToken });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token',
+      });
     }
 
     user.isVerified       = true;
     user.emailVerifyToken = undefined;
     await user.save();
 
-    return res.status(200).json({ success: true, message: 'Email verified successfully' });
+    return res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+    });
   } catch (error) {
     next(error);
   }
@@ -271,7 +330,7 @@ export const uploadProfilePhoto = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    const userId         = req.user._id;
+    const userId          = req.user._id;
     const profilePhotoUrl = req.file.secure_url;
 
     const user = await User.findByIdAndUpdate(
