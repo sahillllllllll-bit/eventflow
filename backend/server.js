@@ -25,6 +25,7 @@ import { generalLimiter } from './middleware/rateLimiter.js';
 import { rawBodyMiddleware, webhookHandler } from './middleware/razorpayWebhook.js';
 
 const app = express();
+app.set('trust proxy', 1); 
 
 // ==================
 // Middleware Setup
