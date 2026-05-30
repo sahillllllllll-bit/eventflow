@@ -1,50 +1,61 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import nodemailer from 'nodemailer';
-// ─── Brevo (formerly Sendinblue) SMTP Transporter ────────────────────────────
+// ─── Brevo HTTP API Client ────────────────────────────────────────────────────
 // Required env vars:
-//   BREVO_SMTP_KEY   → your Brevo SMTP key (Settings > SMTP & API > SMTP)
-//   EMAIL_FROM       → e.g. "EventGlow <noreply@yourdomain.com>"
-
-// console.log('LOGIN:', process.env.BREVO_SMTP_LOGIN);
-// console.log('KEY:', process.env.BREVO_SMTP_KEY);
+//   BREVO_API_KEY   → your Brevo API key (Settings > API Keys)
+//   EMAIL_FROM      → sender email e.g. "noreply@yourdomain.com"
+//   EMAIL_FROM_NAME → sender name  e.g. "EventGlow"
 // ─────────────────────────────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false, // STARTTLS
-  auth: {
-    user: process.env.BREVO_SMTP_LOGIN, // your Brevo account email
-    pass: process.env.BREVO_SMTP_KEY,   // Brevo SMTP key (not API key)
-  },
-});
 
-// Verify connection on startup (logs warning, does NOT crash server)
-transporter.verify((error) => {
-  if (error) {
-    console.warn('[EmailService] Brevo SMTP connection failed:', error.message);
-  } else {
-    console.log('[EmailService] Brevo SMTP ready');
-  }
-});
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
-// ─── Shared mail sender with error resilience ─────────────────────────────────
-const sendMail = async (options) => {
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      ...options,
-    });
-    console.log(`[EmailService] Sent "${options.subject}" to ${options.to} (msgId: ${info.messageId})`);
-    return info;
-  } catch (error) {
-    console.error(`[EmailService] Failed to send "${options.subject}" to ${options.to}:`, error.message);
-    throw error; // let caller decide to swallow or rethrow
-  }
+const brevoHeaders = {
+  'Content-Type': 'application/json',
+  'api-key': process.env.BREVO_API_KEY,
 };
 
-// ─── Base HTML wrapper for consistent email styling ───────────────────────────
+// ─── Core sender ──────────────────────────────────────────────────────────────
+const sendMail = async ({ to, subject, html, attachments = [] }) => {
+  const payload = {
+    sender: {
+      email: process.env.EMAIL_FROM,
+      name: process.env.EMAIL_FROM_NAME || 'EventGlow',
+    },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+  };
+
+  // Attachments: [{ filename, content: Buffer, contentType, cid }]
+  if (attachments.length > 0) {
+    payload.attachment = attachments.map((a) => ({
+      name: a.filename,
+      // Brevo expects raw base64 string
+      content: Buffer.isBuffer(a.content)
+        ? a.content.toString('base64')
+        : a.content,
+    }));
+  }
+
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: brevoHeaders,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`[EmailService] Brevo API error for "${subject}" to ${to}:`, errorBody);
+    throw new Error(`Brevo API error: ${response.status} ${errorBody}`);
+  }
+
+  const result = await response.json();
+  console.log(`[EmailService] Sent "${subject}" to ${to} (msgId: ${result.messageId})`);
+  return result;
+};
+
+// ─── Base HTML wrapper ────────────────────────────────────────────────────────
 const emailWrapper = (body, accentColor = '#6C47FF') => `
 <!DOCTYPE html>
 <html lang="en">
@@ -131,7 +142,9 @@ export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
   });
 };
 
-// ─── 4. Ticket Confirmation (with QR as inline image + attachment) ─────────────
+// ─── 4. Ticket Confirmation (QR as base64 attachment) ─────────────────────────
+// NOTE: Brevo HTTP API does not support inline CID images.
+// The QR code is sent as a downloadable attachment instead.
 export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
   const {
     eventTitle,
@@ -140,15 +153,21 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     eventDate,
     eventTime,
     eventLocation,
-    phone,
     eventColor = '#6C47FF',
   } = ticketData;
 
-  // Parse base64 — handle both "data:image/png;base64,XXX" and raw base64
-  const rawBase64 = qrCodeBase64.includes(',') ? qrCodeBase64.split(',')[1] : qrCodeBase64;
+  // Strip data URI prefix if present
+  const rawBase64 = qrCodeBase64.includes(',')
+    ? qrCodeBase64.split(',')[1]
+    : qrCodeBase64;
 
   const formattedDate = eventDate
-    ? new Date(eventDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(eventDate).toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : 'TBA';
 
   await sendMail({
@@ -193,19 +212,16 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
         </tr>
       </table>
 
-      <div style="text-align:center;margin:24px 0;">
-        <p style="margin:0 0 12px;color:#aaa;font-size:13px;">Show this QR code at the venue for check-in</p>
-        <img src="cid:qrcode" alt="QR Code for ${ticketId}" style="width:180px;height:180px;border:6px solid #2a2a2a;border-radius:10px;" />
-      </div>
-
-      <p style="color:#888;font-size:13px;text-align:center;">The QR code is also attached to this email. Download it for offline access.</p>
+      <p style="color:#aaa;font-size:13px;text-align:center;">
+        Your QR code is attached to this email as <strong style="color:#ccc">ticket-${ticketId}-qr.png</strong>.<br/>
+        Download and show it at the venue for check-in.
+      </p>
     `, eventColor),
     attachments: [
       {
         filename: `ticket-${ticketId}-qr.png`,
         content: Buffer.from(rawBase64, 'base64'),
         contentType: 'image/png',
-        cid: 'qrcode', // inline reference
       },
     ],
   });
@@ -216,7 +232,12 @@ export const sendEventReminderEmail = async (email, eventData) => {
   const { eventTitle, attendeeName, eventDate, message, eventColor = '#6C47FF' } = eventData;
 
   const formattedDate = eventDate
-    ? new Date(eventDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(eventDate).toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : 'TBA';
 
   await sendMail({
@@ -237,6 +258,6 @@ export const sendPromoEmail = async (email, promoData) => {
   await sendMail({
     to: email,
     subject: promoData.subject,
-    html: promoData.html || promoData.body, // support both field names
+    html: promoData.html || promoData.body,
   });
 };
