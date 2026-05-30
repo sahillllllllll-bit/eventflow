@@ -1,7 +1,7 @@
 /**
  * Professional ticket generator for event registrations
- * - generateTicketHTML : full standalone page (used for PDF generation & desktop view)
- * - generateTicketEmailHTML : kept for reference but email now uses PDF attachment
+ * - generateTicketHTML : full standalone page (used for PDF generation & web view)
+ * - generateTicketEmailHTML : alias kept for backwards compatibility
  */
 
 export const generateTicketHTML = (ticketData) => {
@@ -12,23 +12,40 @@ export const generateTicketHTML = (ticketData) => {
     eventDate,
     eventTime,
     eventLocation,
-    qrCodeBase64,   // full data URI  e.g. "data:image/png;base64,..."
+    qrCodeBase64,
     phone,
     email,
     eventColor = '#6C47FF',
   } = ticketData;
 
+  // ── Resolve display time ──────────────────────────────────────────────────
+  // Use eventTime if explicitly provided, otherwise extract from eventDate
+  const displayTime = (() => {
+    if (eventTime && eventTime !== 'TBA' && eventTime.trim() !== '') {
+      return eventTime;
+    }
+    if (eventDate) {
+      return new Date(eventDate).toLocaleTimeString('en-US', {
+        hour:   '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+    return 'TBA';
+  })();
+
+  // ── Format date ───────────────────────────────────────────────────────────
   const dateObj = new Date(eventDate);
   const formattedDate = isNaN(dateObj)
     ? 'TBA'
     : dateObj.toLocaleDateString('en-US', {
         weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year:    'numeric',
+        month:   'long',
+        day:     'numeric',
       });
 
-  // Ensure qrCodeBase64 is a full data URI
+  // ── Normalise QR to full data URI ─────────────────────────────────────────
   const qrSrc = qrCodeBase64
     ? qrCodeBase64.startsWith('data:')
       ? qrCodeBase64
@@ -56,7 +73,6 @@ export const generateTicketHTML = (ticketData) => {
       color: #212529;
     }
 
-    /* ── Card ── */
     .ticket {
       width: 100%;
       max-width: 680px;
@@ -216,7 +232,6 @@ export const generateTicketHTML = (ticketData) => {
       text-align: right;
     }
 
-    /* ── Download button (shown on web, hidden in PDF) ── */
     .download-btn {
       display: inline-flex;
       align-items: center;
@@ -235,7 +250,6 @@ export const generateTicketHTML = (ticketData) => {
     }
     .download-btn:hover { opacity: 0.88; }
 
-    /* ── Copyright ── */
     .copyright {
       margin-top: 20px;
       font-size: 12px;
@@ -243,17 +257,12 @@ export const generateTicketHTML = (ticketData) => {
       text-align: center;
     }
 
-    /* ─────────── MOBILE ─────────── */
+    /* ── Mobile ── */
     @media (max-width: 600px) {
       body { padding: 20px 12px 40px; }
-
       .ticket-header { padding: 28px 20px 22px; }
       .ticket-header h1 { font-size: 20px; }
-
-      /* Stack info + QR vertically */
-      .ticket-body {
-        grid-template-columns: 1fr;
-      }
+      .ticket-body { grid-template-columns: 1fr; }
       .ticket-info {
         padding: 24px 20px 20px;
         border-right: none;
@@ -268,22 +277,13 @@ export const generateTicketHTML = (ticketData) => {
         gap: 16px;
       }
       .qr-wrapper img { width: 130px; height: 130px; }
-
-      .ticket-footer {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
+      .ticket-footer { flex-direction: column; align-items: flex-start; gap: 10px; }
       .footer-note { text-align: left; }
     }
 
-    /* ─────────── PDF print mode ─────────── */
+    /* ── PDF / Print mode ── */
     @media print {
-      body {
-        background: #fff;
-        padding: 0;
-        min-height: unset;
-      }
+      body { background: #fff; padding: 0; min-height: unset; }
       .download-btn, .copyright { display: none !important; }
       .ticket {
         box-shadow: none;
@@ -297,17 +297,14 @@ export const generateTicketHTML = (ticketData) => {
 <body>
 
   <div class="ticket">
-    <!-- Header -->
     <div class="ticket-header">
       <div class="brand">EventGlow</div>
       <h1>${eventTitle}</h1>
       <div class="admit">✦ Admit One ✦</div>
     </div>
 
-    <!-- Body -->
     <div class="ticket-body">
 
-      <!-- Left: info -->
       <div class="ticket-info">
         <div class="attendee">${attendeeName}</div>
 
@@ -323,7 +320,7 @@ export const generateTicketHTML = (ticketData) => {
           <div class="detail-icon">🕐</div>
           <div>
             <div class="detail-label">Time</div>
-            <div class="detail-value">${eventTime || 'TBA'}</div>
+            <div class="detail-value">${displayTime}</div>
           </div>
         </div>
 
@@ -345,7 +342,6 @@ export const generateTicketHTML = (ticketData) => {
         </div>` : ''}
       </div>
 
-      <!-- Right: QR -->
       <div class="ticket-qr">
         <div class="qr-label">Scan at entry</div>
         <div class="qr-wrapper">
@@ -359,7 +355,6 @@ export const generateTicketHTML = (ticketData) => {
 
     </div>
 
-    <!-- Footer -->
     <div class="ticket-footer">
       <div>
         <div class="footer-id-label">Ticket ID</div>
@@ -369,7 +364,6 @@ export const generateTicketHTML = (ticketData) => {
     </div>
   </div>
 
-  <!-- Download button (web only, hidden in PDF) -->
   <button class="download-btn" onclick="window.print()">
     ⬇ Download / Print Ticket
   </button>
@@ -380,7 +374,4 @@ export const generateTicketHTML = (ticketData) => {
 </html>`;
 };
 
-// ─── generateTicketEmailHTML kept for backwards compat but not used ───────────
-// Email now sends a PDF attachment generated from generateTicketHTML.
-// If you still need a plain-HTML fallback, it's here.
 export const generateTicketEmailHTML = generateTicketHTML;
