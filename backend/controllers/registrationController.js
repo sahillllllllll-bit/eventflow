@@ -88,18 +88,25 @@ export const registerForEvent = async (req, res, next) => {
     if (event.sendTicketEmails) {
       // Fire-and-forget — registration never fails because of email
       sendTicketConfirmationEmail(
-        email.trim().toLowerCase(),
-        {
-          eventTitle:    event.title,
-          attendeeName:  name.trim(),
-          ticketId,
-          eventDate:     event.date,
-          eventTime:     event.time, // may be undefined — email handles it
-          eventLocation: event.venue || event.meetLink || 'TBA',
-          eventColor:    event.brandColor || '#6C47FF',
-        },
-        qrCode,
-      ).catch((emailError) => {
+          email.trim().toLowerCase(),
+          {
+            eventTitle:    event.title,
+            attendeeName:  name.trim(),
+            ticketId,
+            eventDate:     event.date,
+            eventTime:     event.date
+              ? new Date(event.date).toLocaleTimeString('en-US', {
+                  hour: '2-digit', minute: '2-digit', hour12: true,
+                })
+              : '',
+            eventLocation: event.isOnline
+              ? (event.meetLink || 'Online')
+              : (event.venue || 'TBA'),
+            eventColor:    event.brandColor || '#6C47FF',
+            isOnline:      event.isOnline || false,
+          },
+          qrCode,
+        ).catch((emailError) => {
         // Log but don't block the success response
         console.error('⚠️  Ticket email failed (non-fatal):', emailError.message);
       });

@@ -133,11 +133,6 @@ export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
 };
 
 // ─── 4. Ticket Confirmation ───────────────────────────────────────────────────
-// Strategy:
-//   • Generates ticket PDF via wkhtmltopdf — identical on all devices
-//   • Attaches PDF as "ticket-XXXX.pdf"
-//   • Attaches QR code as "qr-XXXX.png" — shows as image attachment in all clients
-//   • Email body is clean: event details only, no broken img tags
 export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
   const {
     eventTitle,
@@ -147,52 +142,101 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     eventTime,
     eventLocation,
     eventColor = '#6C47FF',
+    isOnline   = false,       // ← new: skip attachments + swap location label
   } = ticketData;
 
+  // ── Formatted date ────────────────────────────────────────────────────────
   const formattedDate = eventDate
     ? new Date(eventDate).toLocaleDateString('en-IN', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       })
     : 'TBA';
 
-  // ── Normalise QR to full data URI ────────────────────────────────────────
+  // ── Resolve display time ──────────────────────────────────────────────────
+  // eventTime is already extracted from event.date by the caller (registrationController).
+  // This is just a safety fallback.
+  const displayTime = (() => {
+    if (eventTime && eventTime.trim() !== '' && eventTime !== 'TBA') return eventTime;
+    if (eventDate) {
+      return new Date(eventDate).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+    }
+    return 'TBA';
+  })();
+
+  // ── Normalise QR to full data URI ─────────────────────────────────────────
   const qrDataUri = qrCodeBase64
     ? qrCodeBase64.startsWith('data:')
       ? qrCodeBase64
       : `data:image/png;base64,${qrCodeBase64}`
     : null;
 
-  // Raw base64 for attachment content
   const qrRawBase64 = qrDataUri ? qrDataUri.split(',')[1] : null;
 
+  // ── Build attachments — SKIPPED entirely for online events ───────────────
   const attachments = [];
 
-  // ── QR PNG attachment ────────────────────────────────────────────────────
-  if (qrRawBase64) {
-    attachments.push({
-      filename:    `qr-${ticketId}.png`,
-      content:     Buffer.from(qrRawBase64, 'base64'),
-      contentType: 'image/png',
-    });
+  if (!isOnline) {
+    // QR PNG
+    if (qrRawBase64) {
+      attachments.push({
+        filename:    `qr-${ticketId}.png`,
+        content:     Buffer.from(qrRawBase64, 'base64'),
+        contentType: 'image/png',
+      });
+    }
+
+    // PDF ticket
+    try {
+      const ticketHTML = generateTicketHTML({ ...ticketData, qrCodeBase64: qrDataUri });
+      const pdfBuffer  = await generatePDFFromHTML(ticketHTML);
+      attachments.push({
+        filename:    `ticket-${ticketId}.pdf`,
+        content:     pdfBuffer,
+        contentType: 'application/pdf',
+      });
+      console.log(`[EmailService] PDF generated for ${ticketId} (${pdfBuffer.length} bytes)`);
+    } catch (pdfErr) {
+      console.error(`[EmailService] PDF generation failed for ${ticketId}:`, pdfErr.message);
+    }
   }
 
-  // ── PDF ticket attachment ────────────────────────────────────────────────
-  try {
-    const ticketHTML = generateTicketHTML({
-      ...ticketData,
-      qrCodeBase64: qrDataUri,
-    });
-    const pdfBuffer = await generatePDFFromHTML(ticketHTML);
-    attachments.push({
-      filename:    `ticket-${ticketId}.pdf`,
-      content:     pdfBuffer,
-      contentType: 'application/pdf',
-    });
-    console.log(`[EmailService] PDF generated for ${ticketId} (${pdfBuffer.length} bytes)`);
-  } catch (pdfErr) {
-    // Non-fatal — email still sends with QR attachment at minimum
-    console.error(`[EmailService] PDF generation failed for ${ticketId}:`, pdfErr.message);
-  }
+  // ── Location row: "Location" for offline, "Meeting Link" for online ───────
+  const locationRow = isOnline
+    ? `<tr>
+        <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Contest Link</p>
+          <p style="margin:0;font-size:14px;color:#ddd;">
+            <a href="${eventLocation || '#'}"
+               style="color:${eventColor};text-decoration:underline;word-break:break-all;">
+              ${eventLocation || 'Link will be shared before the event'}
+            </a>
+          </p>
+        </td>
+      </tr>`
+    : `<tr>
+        <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
+          <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Location</p>
+          <p style="margin:0;font-size:14px;color:#ddd;">${eventLocation || 'TBA'}</p>
+        </td>
+      </tr>`;
+
+  // ── Bottom callout: attachments info vs join link ─────────────────────────
+  const calloutBlock = isOnline
+    ? `<div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#fff;">🔗 How to join</p>
+        <p style="margin:0;font-size:13px;color:#aaa;">
+          Click the meeting link above at the scheduled time. Your Ticket ID is your entry confirmation — keep it handy.
+        </p>
+      </div>`
+    : `<div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;">
+        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#fff;">📎 Your ticket is attached</p>
+        <p style="margin:0;font-size:13px;color:#aaa;">
+          • <strong style="color:#ccc">ticket-${ticketId}.pdf</strong> — full ticket with QR, ready to print or save<br/>
+          • <strong style="color:#ccc">qr-${ticketId}.png</strong> — QR code image for quick check-in
+        </p>
+      </div>`;
 
   await sendMail({
     to:      email,
@@ -203,7 +247,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
         Hi <strong style="color:#fff">${attendeeName}</strong>, your spot is confirmed.
       </p>
 
-      <!-- Event details -->
       <table width="100%" cellpadding="0" cellspacing="0"
         style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:28px;">
         <tr>
@@ -221,17 +264,12 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
               </td>
               <td width="50%">
                 <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Time</p>
-                <p style="margin:0;font-size:14px;color:#ddd;">${eventTime || 'TBA'}</p>
+                <p style="margin:0;font-size:14px;color:#ddd;">${displayTime}</p>
               </td>
             </tr></table>
           </td>
         </tr>
-        <tr>
-          <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Location</p>
-            <p style="margin:0;font-size:14px;color:#ddd;">${eventLocation || 'TBA'}</p>
-          </td>
-        </tr>
+        ${locationRow}
         <tr>
           <td style="padding:16px 24px;">
             <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Ticket ID</p>
@@ -240,14 +278,7 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
         </tr>
       </table>
 
-      <!-- Attachment callout -->
-      <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;">
-        <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#fff;">📎 Your ticket is attached</p>
-        <p style="margin:0;font-size:13px;color:#aaa;">
-          • <strong style="color:#ccc">ticket-${ticketId}.pdf</strong> — full ticket with QR, ready to print or save<br/>
-          • <strong style="color:#ccc">qr-${ticketId}.png</strong> — QR code image for quick check-in
-        </p>
-      </div>
+      ${calloutBlock}
     `, eventColor),
     attachments,
   });
