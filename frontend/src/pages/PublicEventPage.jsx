@@ -130,7 +130,7 @@ const PublicEventPage = () => {
                 <p className="text-gray-300 font-medium text-sm">🌐 Online Event</p>
                 <a href={event.meetLink} target="_blank" rel="noopener noreferrer"
                   className="text-brand hover:text-brand-light text-sm mt-2 inline-block">
-                  Join Meeting →
+                  Contest Link→
                 </a>
               </>
             ) : (
@@ -162,7 +162,15 @@ const PublicEventPage = () => {
             </div>
           </div>
         </div>
-
+       {/* ── Prizes ──────────────────────────────────────────────────────── */}
+        {event.prizesAndGoodies && (
+          <div className="border-t border-border pt-12 mb-12">
+            <h2 className="text-3xl font-bold mb-6">🎁 Prizes & Goodies</h2>
+            <div className="p-6 bg-surface-raised border border-border rounded-xl">
+              <p className="text-gray-300 leading-relaxed whitespace-pre-line">{event.prizesAndGoodies}</p>
+            </div>
+          </div>
+        )}
         {/* ── Description (Markdown rendered) ─────────────────────────────── */}
         {descriptionHtml && (
           <div className="border-t border-border pt-12 mb-12">
@@ -176,15 +184,7 @@ const PublicEventPage = () => {
           </div>
         )}
 
-        {/* ── Prizes ──────────────────────────────────────────────────────── */}
-        {event.prizesAndGoodies && (
-          <div className="border-t border-border pt-12 mb-12">
-            <h2 className="text-3xl font-bold mb-6">🎁 Prizes & Goodies</h2>
-            <div className="p-6 bg-surface-raised border border-border rounded-xl">
-              <p className="text-gray-300 leading-relaxed whitespace-pre-line">{event.prizesAndGoodies}</p>
-            </div>
-          </div>
-        )}
+       
 
         {/* ── CTA ─────────────────────────────────────────────────────────── */}
         <div className="p-12 border border-brand/20 bg-brand/5 rounded-xl text-center">
