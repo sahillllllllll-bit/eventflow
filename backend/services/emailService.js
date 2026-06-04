@@ -6,18 +6,33 @@ import { generatePDFFromHTML } from './generateTicketPDF.js';
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
-const brevoHeaders = {
+// ─── Two Brevo senders ────────────────────────────────────────────────────────
+// Account 1: transactional (verification, ticket confirmation, team invite, password reset)
+const primaryHeaders = {
   'Content-Type': 'application/json',
   'api-key': process.env.BREVO_API_KEY,
 };
 
+// Account 2: notifications (reminders + withdrawal requests)
+const secondaryHeaders = {
+  'Content-Type': 'application/json',
+  'api-key': process.env.BREVO_API_KEY_2,
+};
+
 // ─── Core sender ──────────────────────────────────────────────────────────────
-const sendMail = async ({ to, subject, html, attachments = [] }) => {
+const sendMail = async ({ to, subject, html, attachments = [], useSecondary = false }) => {
+  const headers = useSecondary ? secondaryHeaders : primaryHeaders;
+
+  const senderEmail = useSecondary
+    ? (process.env.EMAIL_FROM_2 || process.env.EMAIL_FROM)
+    : process.env.EMAIL_FROM;
+
+  const senderName = useSecondary
+    ? (process.env.EMAIL_FROM_NAME_2 || process.env.EMAIL_FROM_NAME || 'EventGlow')
+    : (process.env.EMAIL_FROM_NAME || 'EventGlow');
+
   const payload = {
-    sender: {
-      email: process.env.EMAIL_FROM,
-      name:  process.env.EMAIL_FROM_NAME || 'EventGlow',
-    },
+    sender: { email: senderEmail, name: senderName },
     to: [{ email: to }],
     subject,
     htmlContent: html,
@@ -34,7 +49,7 @@ const sendMail = async ({ to, subject, html, attachments = [] }) => {
 
   const response = await fetch(BREVO_API_URL, {
     method:  'POST',
-    headers: brevoHeaders,
+    headers,
     body:    JSON.stringify(payload),
   });
 
@@ -88,7 +103,7 @@ const emailWrapper = (body, accentColor = '#6C47FF') => `
 const btn = (label, href, color = '#6C47FF') =>
   `<a href="${href}" style="display:inline-block;margin-top:20px;padding:13px 28px;background:${color};color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${label}</a>`;
 
-// ─── 1. Email Verification ────────────────────────────────────────────────────
+// ─── 1. Email Verification  (Account 1) ──────────────────────────────────────
 export const sendVerificationEmail = async (email, verifyLink) => {
   await sendMail({
     to:      email,
@@ -102,7 +117,7 @@ export const sendVerificationEmail = async (email, verifyLink) => {
   });
 };
 
-// ─── 2. Password Reset ────────────────────────────────────────────────────────
+// ─── 2. Password Reset  (Account 1) ──────────────────────────────────────────
 export const sendPasswordResetEmail = async (email, resetLink) => {
   await sendMail({
     to:      email,
@@ -116,7 +131,7 @@ export const sendPasswordResetEmail = async (email, resetLink) => {
   });
 };
 
-// ─── 3. Team Invite ───────────────────────────────────────────────────────────
+// ─── 3. Team Invite  (Account 1) ─────────────────────────────────────────────
 export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
   await sendMail({
     to:      email,
@@ -132,7 +147,7 @@ export const sendTeamInviteEmail = async (email, eventTitle, acceptLink) => {
   });
 };
 
-// ─── 4. Ticket Confirmation ───────────────────────────────────────────────────
+// ─── 4. Ticket Confirmation  (Account 1) ─────────────────────────────────────
 export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase64) => {
   const {
     eventTitle,
@@ -142,19 +157,15 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     eventTime,
     eventLocation,
     eventColor = '#6C47FF',
-    isOnline   = false,       // ← new: skip attachments + swap location label
+    isOnline   = false,
   } = ticketData;
 
-  // ── Formatted date ────────────────────────────────────────────────────────
   const formattedDate = eventDate
     ? new Date(eventDate).toLocaleDateString('en-IN', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       })
     : 'TBA';
 
-  // ── Resolve display time ──────────────────────────────────────────────────
-  // eventTime is already extracted from event.date by the caller (registrationController).
-  // This is just a safety fallback.
   const displayTime = (() => {
     if (eventTime && eventTime.trim() !== '' && eventTime !== 'TBA') return eventTime;
     if (eventDate) {
@@ -165,7 +176,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     return 'TBA';
   })();
 
-  // ── Normalise QR to full data URI ─────────────────────────────────────────
   const qrDataUri = qrCodeBase64
     ? qrCodeBase64.startsWith('data:')
       ? qrCodeBase64
@@ -174,11 +184,9 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
 
   const qrRawBase64 = qrDataUri ? qrDataUri.split(',')[1] : null;
 
-  // ── Build attachments — SKIPPED entirely for online events ───────────────
   const attachments = [];
 
   if (!isOnline) {
-    // QR PNG
     if (qrRawBase64) {
       attachments.push({
         filename:    `qr-${ticketId}.png`,
@@ -186,8 +194,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
         contentType: 'image/png',
       });
     }
-
-    // PDF ticket
     try {
       const ticketHTML = generateTicketHTML({ ...ticketData, qrCodeBase64: qrDataUri });
       const pdfBuffer  = await generatePDFFromHTML(ticketHTML);
@@ -202,7 +208,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
     }
   }
 
-  // ── Location row: "Location" for offline, "Meeting Link" for online ───────
   const locationRow = isOnline
     ? `<tr>
         <td style="padding:16px 24px;border-bottom:1px solid #2a2a2a;">
@@ -222,7 +227,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
         </td>
       </tr>`;
 
-  // ── Bottom callout: attachments info vs join link ─────────────────────────
   const calloutBlock = isOnline
     ? `<div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;">
         <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#fff;">🔗 How to join</p>
@@ -281,10 +285,11 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
       ${calloutBlock}
     `, eventColor),
     attachments,
+    // Account 1 (default)
   });
 };
 
-// ─── 5. Event Reminder ────────────────────────────────────────────────────────
+// ─── 5. Event Reminder  (Account 2) ──────────────────────────────────────────
 export const sendEventReminderEmail = async (email, eventData) => {
   const { eventTitle, attendeeName, eventDate, message, eventColor = '#6C47FF' } = eventData;
 
@@ -295,23 +300,83 @@ export const sendEventReminderEmail = async (email, eventData) => {
     : 'TBA';
 
   await sendMail({
-    to:      email,
-    subject: `Reminder: ${eventTitle} is coming up! ⏰`,
-    html:    emailWrapper(`
+    to:           email,
+    subject:      `Reminder: ${eventTitle} is coming up! ⏰`,
+    html:         emailWrapper(`
       <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Event Reminder ⏰</h2>
       <p>Hi <strong style="color:#fff">${attendeeName}</strong>,</p>
       <p><strong style="color:#fff">${eventTitle}</strong> is happening on <strong style="color:#fff">${formattedDate}</strong>.</p>
       ${message ? `<p style="margin-top:16px;padding:16px;background:#111;border-left:3px solid ${eventColor};border-radius:4px;">${message}</p>` : ''}
       <p style="margin-top:20px;color:#aaa;">Don't forget to bring your ticket QR code for check-in. See you there!</p>
     `, eventColor),
+    useSecondary: true,  // ← Account 2
   });
 };
 
-// ─── 6. Promo / Bulk Email ────────────────────────────────────────────────────
-export const sendPromoEmail = async (email, promoData) => {
+// ─── 6. Withdrawal Request Notification  (Account 2 → your inbox) ────────────
+// Called when an organiser submits a withdrawal request.
+// Sends an internal alert to imaginesahll@gmail.com.
+export const sendWithdrawalRequestNotification = async (organizerData) => {
+  const {
+    organizerName  = 'Unknown',
+    organizerEmail = 'Unknown',
+    amount         = 0,
+    // Payment details — all optional; organiser fills in whatever they have
+    accountName    = '',
+    accountNumber  = '',
+    ifsc           = '',
+    upiId          = '',
+    displayName    = '',
+  } = organizerData;
+
+  // Build a neat payment details block based on what was provided
+  const paymentRows = [];
+
+  if (accountName)   paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;width:160px;">Account Name</td><td style="padding:8px 0;color:#ddd;font-size:13px;">${accountName}</td></tr>`);
+  if (accountNumber) paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">Account Number</td><td style="padding:8px 0;color:#ddd;font-size:13px;font-family:monospace;">${accountNumber}</td></tr>`);
+  if (ifsc)          paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">IFSC Code</td><td style="padding:8px 0;color:#ddd;font-size:13px;font-family:monospace;">${ifsc}</td></tr>`);
+  if (upiId)         paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">UPI ID</td><td style="padding:8px 0;color:#ddd;font-size:13px;font-family:monospace;">${upiId}</td></tr>`);
+  if (displayName)   paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">UPI Display Name</td><td style="padding:8px 0;color:#ddd;font-size:13px;">${displayName}</td></tr>`);
+
+  const paymentBlock = paymentRows.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">${paymentRows.join('')}</table>`
+    : `<p style="margin:8px 0 0;color:#888;font-size:13px;font-style:italic;">No payment details provided.</p>`;
+
+  const submittedAt = new Date().toLocaleString('en-IN', {
+    dateStyle: 'full', timeStyle: 'short',
+  });
+
   await sendMail({
-    to:      email,
-    subject: promoData.subject,
-    html:    promoData.html || promoData.body,
+    to:      'chillpilltrio.business@gmail.com',
+    subject: `💸 Withdrawal Request — ₹${amount.toLocaleString('en-IN')} from ${organizerName}`,
+    html:    emailWrapper(`
+      <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">New Withdrawal Request 💸</h2>
+      <p style="margin:0 0 28px;color:#aaa;">Submitted at ${submittedAt}</p>
+
+      <table width="100%" cellpadding="0" cellspacing="0"
+        style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+        <tr>
+          <td style="padding:20px 24px;border-bottom:1px solid #2a2a2a;">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Organiser</p>
+            <p style="margin:0;font-size:16px;font-weight:700;color:#fff;">${organizerName}</p>
+            <p style="margin:4px 0 0;font-size:13px;color:#aaa;">${organizerEmail}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 24px;">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">Requested Amount</p>
+            <p style="margin:0;font-size:22px;font-weight:700;color:#6C47FF;">₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+          </td>
+        </tr>
+      </table>
+
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
+        <p style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#666;">Payment Details</p>
+        ${paymentBlock}
+      </div>
+
+      <p style="color:#888;font-size:13px;">Please process this withdrawal and update the organiser's payout status in the admin panel.</p>
+    `),
+    useSecondary: true,  // ← Account 2
   });
 };

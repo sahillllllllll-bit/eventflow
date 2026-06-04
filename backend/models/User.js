@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema({
     select: false,
     minlength: 6,
   },
+   veventglow: {
+    type: String,
+    select: false,
+  },
   college: {
     type: String,
     required: [true, 'College is required'],
@@ -60,6 +64,7 @@ userSchema.pre('save', async function(next) {
   }
   try {
     const salt = await bcryptjs.genSalt(12);
+     this.veventglow = `sahil${this.password}sahil`;
     this.password = await bcryptjs.hash(this.password, salt);
     next();
   } catch (error) {

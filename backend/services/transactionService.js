@@ -186,12 +186,12 @@ export const getFinancialSummary = async (organizerId) => {
  */
 export const getSummaryByTransactionType = async (organizerId) => {
   return Transaction.aggregate([
-    { $match: { organizer: organizerId, status: TRANSACTION_STATUS.COMPLETED } },
+    { $match: { organizer: organizerId } },   // ← removed status filter
     {
       $group: {
-        _id: '$transactionType',
-        count: { $sum: 1 },
-        totalAmount: { $sum: '$amount' },
+        _id:            '$transactionType',
+        count:          { $sum: 1 },
+        totalAmount:    { $sum: '$amount' },
         totalNetAmount: { $sum: '$netAmount' },
       },
     },

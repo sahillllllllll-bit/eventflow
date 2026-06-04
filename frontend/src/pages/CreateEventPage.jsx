@@ -380,7 +380,7 @@ const CreateEventPage = () => {
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5 leading-snug">
                         {formData.sendTicketEmails
-                          ? 'Each registrant receives their ticket + QR code by email'
+                          ? 'Each registrant receives their ticket + QR code by email + Confirmation Email'
                           : 'No email sent — registrants download from confirmation page'}
                       </p>
                     </div>
@@ -395,13 +395,13 @@ const CreateEventPage = () => {
                 </div>
 
                 {formData.sendTicketEmails && (
-                  <div className="p-4 sm:p-5 space-y-4">
-                    <p className="text-sm text-gray-400">
+                  <div className=" space-y-4">
+                    {/* <p className="text-sm text-gray-400">
                       First <strong className="text-white">100 emails are free</strong>. Above that, ₹0.20 per email.
-                    </p>
+                    </p> */}
                     {/* Credits input + cost: stacked on mobile */}
-                    <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 sm:items-end">
-                      <div>
+                    {/* <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 sm:items-end"> */}
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1.5 sm:mb-2">
                           Extra email credits
                           <span className="ml-1 text-xs text-gray-500">(beyond free 100)</span>
@@ -409,15 +409,15 @@ const CreateEventPage = () => {
                         <input type="number" min="0" value={formData.paidEmailCredits}
                           onChange={(e) => handleInputChange('paidEmailCredits', Number(e.target.value) || 0)}
                           placeholder="0" className={inputCls} />
-                      </div>
-                      <div className="rounded-xl border border-border p-3 sm:p-4 bg-surface-raised">
+                      </div> */}
+                      {/* <div className="rounded-xl border border-border p-3 sm:p-4 bg-surface-raised">
                         <p className="text-xs sm:text-sm text-gray-400">Estimated charge</p>
                         <p className="text-xl sm:text-2xl font-semibold text-white">
                           ₹{emailCreditCost.toFixed(2)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Billed now via Razorpay.</p>
-                      </div>
-                    </div>
+                      </div> */}
+                    {/* </div> */}
 
                     {formData.paidEmailCredits > 0 && (
                       <div className="pt-2 border-t border-border">

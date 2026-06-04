@@ -220,7 +220,9 @@ const EditEventPage = () => {
             </div>
 
             {/* Email Credits Section */}
-            <div className="mt-6 p-4 bg-surface-overlay border border-border rounded-xl">
+
+
+             <div className="mt-6 p-4 bg-surface-overlay border border-border rounded-xl">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -230,12 +232,12 @@ const EditEventPage = () => {
                 />
                 <span className="font-medium text-white">Send tickets and confirmation emails</span>
               </label>
-              <p className="text-gray-400 text-sm mt-3">
+              {/* <p className="text-gray-400 text-sm mt-3">
                 100 emails free. Above 100 emails, ₹0.20 per additional email.
-              </p>
+              </p> */}
               {form.sendTicketEmails && (
                 <div className="mt-4 space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2 items-end">
+                  {/* <div className="grid gap-4 sm:grid-cols-2 items-end">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Extra email credits</label>
                       <input
@@ -260,10 +262,10 @@ const EditEventPage = () => {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* ── Pay for NEW email credits only ────────────── */}
-                  {newCredits > 0 && (
+                  {/* {newCredits > 0 && (
                     <div className="pt-3 border-t border-border">
                       <p className="text-sm text-gray-400 mb-3">
                         You're adding <strong className="text-white">{newCredits}</strong> new email credits.
@@ -286,10 +288,10 @@ const EditEventPage = () => {
                         }}
                       />
                     </div>
-                  )}
+                  )} */}
                 </div>
               )}
-            </div>
+            </div> 
 
             <div className="flex flex-wrap gap-4">
               <button

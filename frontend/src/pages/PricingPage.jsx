@@ -6,7 +6,7 @@ const pricingItems = [
   { item: 'Event Landing Page', price: '₹0', desc: 'Create unlimited public event pages' },
   { item: 'Custom Registration Forms', price: '₹0', desc: 'Add custom questions & attendee details' },
   { item: 'Event Analytics', price: '₹0', desc: 'Track registrations, attendance & payments' },
-  { item: 'Paid Registration Processing', price: '₹1 (above ₹50 ticket price) + gateway fees', desc: 'Per successful registration (+2–3% payment gateway charges)' },
+  { item: 'Paid Registration Processing', price: '1% platform fees + gateway fees', desc: 'Per successful registration (+2–3% payment gateway charges)' },
   { item: 'Ticket Generation', price: '₹0', desc: 'Instant downloadable ticket with QR code' },
   { item: 'Reminder / Promo Emails', price: '₹0.20', desc: 'Per email sent to attendees' },
   { item: 'Registration Confirmation Emails', price: '₹0.20', desc: 'Auto ticket & event confirmation emails' },

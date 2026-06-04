@@ -72,7 +72,12 @@ const FinanceCard = ({
         <div className="flex-1">
           <p className="text-gray-400 text-sm font-medium">{title}</p>
           <p className={`text-2xl sm:text-3xl font-bold mt-2 ${colors.text}`}>
-            ₹{typeof amount === 'number' ? amount.toLocaleString('en-IN', { maximumFractionDigits: 0 }) : amount}
+            ₹{typeof amount === 'number'
+  ? amount.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  : amount}
           </p>
           {subtitle && (
             <p className="text-xs text-gray-500 mt-2">{subtitle}</p>

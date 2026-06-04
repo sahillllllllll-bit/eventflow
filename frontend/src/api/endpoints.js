@@ -52,6 +52,7 @@ export const promoAPI = {
 // Payout APIs
 export const payoutAPI = {
   getSummary: () => axiosInstance.get('/payouts'),
+  requestWithdrawal: (data) => axiosInstance.post('/payouts/request-withdrawal', data),
 };
 
 // Transaction APIs

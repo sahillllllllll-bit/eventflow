@@ -1,6 +1,6 @@
 import PromoEmail from '../models/PromoEmail.js';
 import Registration from '../models/Registration.js';
-import { sendPromoEmail } from '../services/emailService.js';
+// import { sendPromoEmail } from '../services/emailService.js';
 
 export const sendPromoEmailToAttendees = async (req, res, next) => {
   try {
