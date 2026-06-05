@@ -336,10 +336,15 @@ const CreateEventPage = () => {
 
               {formData.isPaid && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5 sm:mb-2">Ticket Price (₹)</label>
-                  <input type="number" value={formData.ticketPrice}
-                    onChange={(e) => handleInputChange('ticketPrice', e.target.value)}
-                    placeholder="e.g., 500" className={inputCls} />
+                    <label className="block text-sm font-medium text-gray-300 mb-1.5 sm:mb-2">
+                      Ticket Price (₹)
+                    </label>
+                    <input type="number" value={formData.ticketPrice}
+                      onChange={(e) => handleInputChange('ticketPrice', e.target.value)}
+                      placeholder="e.g., 500" className={inputCls} />
+                    <p className="mt-1 text-xs text-gray-400">
+                      💡 Want attendees to cover payment gateway fees? Add <span className="text-yellow-400 font-medium">3%</span> to your ticket price.
+                    </p>
                 </div>
               )}
 
@@ -509,7 +514,7 @@ const CreateEventPage = () => {
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Ticket Emails</p>
                     <p className={`text-sm font-medium ${formData.sendTicketEmails ? 'text-green-400' : 'text-gray-500'}`}>
                       {formData.sendTicketEmails
-                        ? `✅ Enabled (${100 + (formData.paidEmailCredits || 0)} total credits)`
+                        ? `✅ Enabled`
                         : '🚫 Disabled'}
                     </p>
                   </div>

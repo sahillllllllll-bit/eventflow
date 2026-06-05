@@ -84,7 +84,7 @@ const FormBuilder = ({ sections, onSectionsChange }) => {
       <div className="lg:col-span-2 space-y-4 overflow-y-auto max-h-96">
         {/* Locked Fields */}
         <div className="bg-surface-raised border border-border rounded-xl p-6 space-y-4">
-          <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wide">Required Fields</h3>
+          <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wide">Required Fields (used to send confirmation emails)</h3>
           <div className="space-y-3 opacity-75">
             {[
               { label: 'Full Name', type: 'text' },
