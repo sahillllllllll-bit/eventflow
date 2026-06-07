@@ -441,6 +441,7 @@ export default function CertificateEditor({
             Save & Continue
           </button>
         </div>
+        
       </div>
     );
   }

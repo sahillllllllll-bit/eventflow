@@ -362,14 +362,14 @@ export default function CanvasCertificateEditor({
             <Redo2 size={16}/>
           </button>
           <div className="w-px h-5 bg-gray-700"/>
-          <button onClick={() => setShowExportPanel(true)}
+          {/* <button onClick={() => setShowExportPanel(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-semibold transition">
             <Download size={14}/> Export
-          </button>
+          </button> */}
           <button onClick={handleSave} disabled={isLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold transition disabled:opacity-50">
             {isLoading ? <Loader size={14} className="animate-spin"/> : <Save size={14}/>}
-            Save Template
+            Save And Continue
           </button>
         </div>
       </div>
