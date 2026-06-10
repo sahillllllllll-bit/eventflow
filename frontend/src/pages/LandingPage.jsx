@@ -133,9 +133,9 @@ const LandingPage = () => {
           >
             Get Started Free <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
-          <button className="px-6 sm:px-8 py-3 sm:py-4 border border-brand text-brand hover:bg-brand/10 font-semibold rounded-lg transition text-sm sm:text-base">
+          {/* <button className="px-6 sm:px-8 py-3 sm:py-4 border border-brand text-brand hover:bg-brand/10 font-semibold rounded-lg transition text-sm sm:text-base">
             See Demo
-          </button>
+          </button> */}
         </div>
         <div className="text-xs sm:text-sm text-gray-400">
           ✨ Completely free to start. Pay only for what you use.
