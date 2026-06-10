@@ -192,7 +192,7 @@ const LandingPage = () => {
 
           <div className="p-5 sm:p-8 border border-brand/30 bg-brand/5 rounded-xl">
             <p className="text-center text-gray-300 text-sm sm:text-base">
-              💡 <span className="font-semibold">Platform Fee:</span> 2%-3% on paid events (Payment Gateway fees, Razorpay) + ₹1 per ticket. Zero setup fees. Zero monthly charges.
+              💡 <span className="font-semibold">Platform Fee:</span> 2%-3% on paid events (Payment Gateway fees, Razorpay) + 1% per ticket. Zero setup fees. Zero monthly charges.
             </p>
           </div>
         </div>
