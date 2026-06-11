@@ -468,6 +468,47 @@ export const publishEvent = async (req, res, next) => {
   }
 };
 
+// eventController.js
+export const getPublicEvents = async (req, res, next) => {
+  try {
+    const { category, search, page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = { status: 'published' };
+    if (category && category !== 'All') {
+      query.category = { $regex: new RegExp(category, 'i') };
+    }
+    if (search) {
+      query.$or = [
+        { title:        { $regex: search, $options: 'i' } },
+        { shortSummary: { $regex: search, $options: 'i' } },
+        { venue:        { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const events = await Event.find(query)
+      .populate('organizer', 'name')
+      .sort({ date: 1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const total = await Event.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      events,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getEventAnalytics = async (req, res, next) => {
   try {
     const { id } = req.params;

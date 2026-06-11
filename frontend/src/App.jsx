@@ -4,7 +4,10 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 // Pages
+import MainLand from './pages/MainLand.jsx';
 import LandingPage from './pages/LandingPage.jsx';
+import DiscoverPage from './pages/DiscoverPage.jsx';
+
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
@@ -37,7 +40,9 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<MainLand/>} />
+          <Route path="/discover" element={<DiscoverPage/>} />
+          <Route path="/org" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

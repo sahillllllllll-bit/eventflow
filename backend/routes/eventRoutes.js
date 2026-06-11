@@ -15,6 +15,7 @@ import {
   updateTeamMember,
   removeTeamMember,
   uploadEventCover,
+  getPublicEvents,
 } from '../controllers/eventController.js';
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
@@ -55,6 +56,7 @@ const updateTeamMemberSchema = z.object({
 router.post('/', auth, validateSchema(createEventSchema), createEvent);
 router.get('/my', auth, getMyEvents);
 router.get('/id/:id', auth, getEventById);
+router.get('/public', getPublicEvents); 
 router.get('/:slug', getEventBySlug);
 router.put('/:id', auth, updateEvent);
 router.delete('/:id', auth, deleteEvent);

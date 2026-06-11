@@ -75,9 +75,9 @@ const LandingPage = () => {
         className="h-10 sm:h-16 w-auto object-contain"
       />
 
-      <span className="text-xl sm:text-2xl font-bold text-white">
+      <Link to="/" className="text-xl sm:text-2xl font-bold text-white">
         EventGlow
-      </span>
+      </Link>
     </div>
 
     {/* Right Side Buttons */}
