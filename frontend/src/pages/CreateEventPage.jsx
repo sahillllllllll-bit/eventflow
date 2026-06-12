@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import StepWizard from '../components/StepWizard.jsx';
-import TemplateCard from '../components/TemplateCard.jsx';
 import FormBuilder from '../components/FormBuilder.jsx';
 import Modal from '../components/Modal.jsx';
 import MarkdownEditor from '../components/MarkdownEditor.jsx';
@@ -33,6 +32,7 @@ const CreateEventPage = () => {
     category:         'fest',
     date:             '',
     endDate:          '',
+    registrationClosesAt: '',
     isOnline:         false,
     venue:            '',
     venueMapLink:     '',
@@ -41,7 +41,6 @@ const CreateEventPage = () => {
     coverImage:       null,
     tags:             '',
     maxCapacity:      '',
-    template:         'minimal',
     isPaid:           false,
     ticketPrice:      0,
     sendTicketEmails: true,
@@ -53,9 +52,8 @@ const CreateEventPage = () => {
   const steps = [
     'Event Basics',
     'Ticket & Email',
-    'Landing Page',
     'Reg. Form',
-    'Review',
+    'Review & Publish',
   ];
 
   const handleInputChange = (field, value) => {
@@ -111,6 +109,7 @@ const CreateEventPage = () => {
     category:         formData.category,
     date:             formData.date    || undefined,
     endDate:          formData.endDate || undefined,
+    registrationClosesAt: formData.registrationClosesAt || undefined,
     venue:            formData.venue   || undefined,
     venueMapLink:     formData.venueMapLink || undefined,
     isOnline:         formData.isOnline,
@@ -120,7 +119,6 @@ const CreateEventPage = () => {
     ticketPrice:      formData.isPaid ? parseInt(formData.ticketPrice) : 0,
     sendTicketEmails: formData.sendTicketEmails,
     paidEmailCredits: formData.sendTicketEmails ? Number(formData.paidEmailCredits) : 0,
-    template:         formData.template,
     prizesAndGoodies: formData.prizesAndGoodies || undefined,
     tags:             formData.tags.split(',').map(t => t.trim()).filter(Boolean),
     formSections:     formData.formSections,
@@ -128,26 +126,58 @@ const CreateEventPage = () => {
     ...(emailCreditsPaymentId && { emailCreditsPaymentId }),
   });
 
-  const handlePublish = async () => {
-    try {
-      setLoading(true);
-      const res = await eventAPI.createEvent(buildPayload('published'));
-      const eventId = res.data.event._id;
-      await eventAPI.publishEvent(eventId);
-      showToast('Event published successfully!', 'success');
-      setPublishModal(false);
-      setTimeout(() => navigate(`/dashboard/events/${eventId}`), 1000);
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to publish event', 'error');
-    } finally {
-      setLoading(false);
+ const handlePublish = async () => {
+  try {
+    setLoading(true);
+    const payload = buildPayload('published');
+    
+    const res = await eventAPI.createEvent(payload);
+    const eventId = res.data.event._id;
+    
+    // ✅ FIXED upload block
+    if (formData.coverImage && eventId) {
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('coverImage', formData.coverImage); // ← this line was missing
+        const uploadRes = await eventAPI.uploadEventCover(eventId, uploadFormData);
+        console.log('Cover image uploaded:', uploadRes.data);
+      } catch (uploadError) {
+        console.error('Cover image upload failed:', uploadError);
+      }
     }
-  };
+    
+    await eventAPI.publishEvent(eventId);
+    showToast('Event published successfully!', 'success');
+    setPublishModal(false);
+    setTimeout(() => navigate(`/dashboard/events/${eventId}`), 1000);
+  } catch (error) {
+    showToast(error.response?.data?.message || 'Failed to publish event', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSaveDraft = async () => {
     try {
       setLoading(true);
-      await eventAPI.createEvent(buildPayload('draft'));
+      const payload = buildPayload('draft');
+      
+      // Create event first
+      const res = await eventAPI.createEvent(payload);
+      const eventId = res.data.event._id;
+      
+      // Then upload cover image if provided
+      if (formData.coverImage && eventId) {
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append('coverImage', formData.coverImage);
+          const uploadRes = await eventAPI.uploadEventCover(eventId, uploadFormData);
+          console.log('Cover image uploaded:', uploadRes.data);
+        } catch (uploadError) {
+          console.error('Cover image upload failed, but event was created:', uploadError);
+        }
+      }
+      
       showToast('Event saved as draft!', 'success');
       setTimeout(() => navigate('/dashboard/events'), 1000);
     } catch (error) {
@@ -259,6 +289,29 @@ const CreateEventPage = () => {
                   <input type="datetime-local" value={formData.endDate}
                     onChange={(e) => handleInputChange('endDate', e.target.value)} className={inputCls} />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5 sm:mb-2">
+                  Registration Close Date & Time
+                  <span className="ml-1.5 text-xs text-gray-500 font-normal block sm:inline mt-0.5 sm:mt-0">
+                    (optional)
+                  </span>
+                </label>
+                <input type="datetime-local" value={formData.registrationClosesAt}
+                  onChange={(e) => handleInputChange('registrationClosesAt', e.target.value)} className={inputCls} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5 sm:mb-2">
+                  Event Cover / Banner Image
+                  <span className="ml-1.5 text-xs text-gray-500 font-normal block sm:inline mt-0.5 sm:mt-0">
+                    (optional)
+                  </span>
+                </label>
+                <input type="file" accept="image/*" onChange={(e) => handleInputChange('coverImage', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-surface-overlay border border-border rounded-lg text-gray-400 focus:ring-2 focus:ring-brand focus:border-transparent transition outline-none text-sm file:text-white file:bg-brand file:border-0 file:px-2 file:py-1 file:rounded file:cursor-pointer" />
+                <p className="text-xs text-gray-500 mt-1.5">💡 Recommended dimensions: 1200x400px or 1600x500px</p>
               </div>
 
               {/* Online toggle */}
@@ -453,24 +506,8 @@ const CreateEventPage = () => {
             </div>
           )}
 
-          {/* ── Step 3: Template ─────────────────────────────────── */}
+          {/* ── Step 3: Landing Page ────────────────────────────── */}
           {currentStep === 2 && (
-            <div className={cardCls}>
-              <h2 className="text-xl sm:text-2xl font-bold">Choose Landing Page Template</h2>
-              <p className="text-sm sm:text-base text-gray-400">Pick a design for your event's public landing page</p>
-              {/* 2 cols on mobile, up to 5 on desktop */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-                {['minimal','bold','gradient','dark','glass'].map(template => (
-                  <TemplateCard key={template} template={template}
-                    isSelected={formData.template === template}
-                    onClick={() => handleInputChange('template', template)} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 4: Form Builder ─────────────────────────────── */}
-          {currentStep === 3 && (
             <div className="space-y-4 sm:space-y-6">
               <h2 className="text-xl sm:text-2xl font-bold">Registration Form Builder</h2>
               <FormBuilder
@@ -479,8 +516,8 @@ const CreateEventPage = () => {
             </div>
           )}
 
-          {/* ── Step 5: Review & Publish ─────────────────────────── */}
-          {currentStep === 4 && (
+          {/* ── Step 4: Review & Publish ─────────────────────────── */}
+          {currentStep === 3 && (
             <div className={cardCls}>
               <h2 className="text-xl sm:text-2xl font-bold">Review & Publish</h2>
               <div className="space-y-3 sm:space-y-4">
@@ -506,10 +543,6 @@ const CreateEventPage = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="p-3 sm:p-4 bg-surface-overlay border border-border rounded-lg">
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Template</p>
-                    <p className="text-sm text-gray-300 capitalize">{formData.template}</p>
-                  </div>
                   <div className="p-3 sm:p-4 bg-surface-overlay border border-border rounded-lg">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Ticket Emails</p>
                     <p className={`text-sm font-medium ${formData.sendTicketEmails ? 'text-green-400' : 'text-gray-500'}`}>

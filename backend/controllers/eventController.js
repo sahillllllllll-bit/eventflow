@@ -1,6 +1,9 @@
 import Event from '../models/Event.js';
 import User from '../models/User.js';
 import Registration from '../models/Registration.js';
+import PromoEmail from '../models/PromoEmail.js';
+import { CertificateTemplate, CertificateIssued } from '../models/Certificate.js';
+import { v2 as cloudinary } from 'cloudinary';
 import { generateSlug, generateTicketId } from '../utils/helpers.js';
 import { generateQRCode } from '../services/qrService.js';
 import { sendTicketConfirmationEmail, sendTeamInviteEmail, sendEventReminderEmail } from '../services/emailService.js';
@@ -18,6 +21,7 @@ export const createEvent = async (req, res, next) => {
       category,
       date,
       endDate,
+      registrationClosesAt,
       venue,
       venueMapLink,
       isOnline,
@@ -25,7 +29,6 @@ export const createEvent = async (req, res, next) => {
       isPaid,
       ticketPrice,
       maxCapacity,
-      template,
       tags,
       formSections,
       brandColor,
@@ -36,12 +39,16 @@ export const createEvent = async (req, res, next) => {
     // Validate and parse dates
     const parsedDate    = date    && date.trim()    ? new Date(date)    : null;
     const parsedEndDate = endDate && endDate.trim() ? new Date(endDate) : null;
+    const parsedRegistrationClosesAt = registrationClosesAt && registrationClosesAt.trim() ? new Date(registrationClosesAt) : null;
  
     if (parsedDate    && isNaN(parsedDate.getTime()))    {
       return res.status(400).json({ success: false, message: 'Invalid start date format' });
     }
     if (parsedEndDate && isNaN(parsedEndDate.getTime())) {
       return res.status(400).json({ success: false, message: 'Invalid end date format' });
+    }
+    if (parsedRegistrationClosesAt && isNaN(parsedRegistrationClosesAt.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid registration closes date format' });
     }
  
     const event = new Event({
@@ -56,6 +63,7 @@ export const createEvent = async (req, res, next) => {
       category,
       date:             parsedDate,
       endDate:          parsedEndDate,
+      registrationClosesAt: parsedRegistrationClosesAt,
       venue,
       venueMapLink,
       isOnline,
@@ -63,7 +71,7 @@ export const createEvent = async (req, res, next) => {
       isPaid,
       ticketPrice:      isPaid ? ticketPrice : 0,
       maxCapacity,
-      template,
+      template:         'dark',
       tags,
       formSections,
       brandColor:       brandColor || '#6C47FF',
@@ -549,6 +557,8 @@ export const getEventAnalytics = async (req, res, next) => {
 
 export const uploadEventCover = async (req, res, next) => {
   try {
+     console.log('req.file:', req.file);        // ← add this
+    console.log('req.body:', req.body);
     const { id } = req.params;
 
     if (!req.file) {
@@ -566,13 +576,116 @@ export const uploadEventCover = async (req, res, next) => {
     }
 
     // Update event with cover image URL
-    event.coverImage = req.file.secure_url;
+    event.coverImage = req.file.path;
     await event.save();
 
     res.status(200).json({
       success: true,
       message: 'Event cover image uploaded successfully',
       coverImage: req.file.secure_url,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Hard delete event with all associated data
+export const hardDeleteEvent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find and validate event
+    const event = await Event.findById(id);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    // Check authorization
+    if (event.organizer.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to delete this event' });
+    }
+
+    // 1. Delete cover image from Cloudinary if exists
+    if (event.coverImage) {
+      try {
+        const urlParts = event.coverImage.split('/');
+        const publicId = urlParts.slice(-2).join('/').split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.error('Error deleting cover image from Cloudinary:', err);
+        // Continue with deletion even if cover image deletion fails
+      }
+    }
+
+    // 2. Delete all certificate templates and associated certificates for this event
+    try {
+      const templates = await CertificateTemplate.find({ eventId: event._id });
+      
+      for (const template of templates) {
+        // Find all issued certificates for this template
+        const issuedCerts = await CertificateIssued.find({ templateId: template._id });
+        
+        // Delete PDF files from Cloudinary for each issued certificate
+        for (const cert of issuedCerts) {
+          if (cert.certificatePDF) {
+            try {
+              const urlParts = cert.certificatePDF.split('/');
+              const publicId = urlParts.slice(-2).join('/').split('.')[0];
+              await cloudinary.uploader.destroy(publicId);
+            } catch (err) {
+              console.error('Error deleting certificate PDF from Cloudinary:', err);
+            }
+          }
+        }
+        
+        // Delete all issued certificates for this template
+        await CertificateIssued.deleteMany({ templateId: template._id });
+        
+        // Delete template logo and signature from Cloudinary if they exist
+        if (template.logo) {
+          try {
+            const urlParts = template.logo.split('/');
+            const publicId = urlParts.slice(-2).join('/').split('.')[0];
+            await cloudinary.uploader.destroy(publicId);
+          } catch (err) {
+            console.error('Error deleting template logo from Cloudinary:', err);
+          }
+        }
+        
+        if (template.organizerSignature) {
+          try {
+            const urlParts = template.organizerSignature.split('/');
+            const publicId = urlParts.slice(-2).join('/').split('.')[0];
+            await cloudinary.uploader.destroy(publicId);
+          } catch (err) {
+            console.error('Error deleting template signature from Cloudinary:', err);
+          }
+        }
+        
+        // Delete the template itself
+        await CertificateTemplate.findByIdAndDelete(template._id);
+      }
+    } catch (err) {
+      console.error('Error deleting certificates:', err);
+      // Continue with deletion even if certificate deletion fails
+    }
+
+    // 3. Delete all promo email history for this event
+    try {
+      await PromoEmail.deleteMany({ eventId: event._id });
+    } catch (err) {
+      console.error('Error deleting promo emails:', err);
+      // Continue with deletion even if promo email deletion fails
+    }
+
+    // 4. DO NOT delete Registration documents - keep them as per requirements
+
+    // 5. Hard delete the event itself
+    await Event.findByIdAndDelete(event._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Event permanently deleted'
     });
   } catch (error) {
     next(error);

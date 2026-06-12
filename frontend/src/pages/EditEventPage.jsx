@@ -31,6 +31,11 @@ const EditEventPage = () => {
   const [emailCreditsPaid, setEmailCreditsPaid]       = useState(false);
   const [emailCreditsPaymentId, setEmailCreditsPaymentId] = useState(null);
 
+  // ── Delete event state ──────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
   useEffect(() => {
     const loadEvent = async () => {
       try {
@@ -81,6 +86,25 @@ const EditEventPage = () => {
     }
   };
 
+  const handleDeleteEvent = async () => {
+    try {
+      setDeleteLoading(true);
+      setDeleteError(null);
+      
+      await eventAPI.hardDeleteEvent(id);
+      
+      showToast('Event permanently deleted!', 'success');
+      setShowDeleteModal(false);
+      setTimeout(() => navigate('/dashboard'), 1000);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to delete event';
+      setDeleteError(errorMsg);
+      console.error('Delete event error:', error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -128,6 +152,7 @@ const EditEventPage = () => {
             <p className="text-gray-400 mt-4">Loading event details...</p>
           </div>
         ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-surface-overlay bg-surface p-8">
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
@@ -309,9 +334,69 @@ const EditEventPage = () => {
                 Cancel
               </button>
             </div>
+
+            {/* ── Delete Event Section ──────────────────────────── */}
+            <div className="mt-12 pt-8 border-t border-surface-overlay">
+              <p className="text-sm text-gray-500 mb-4">
+                This will permanently delete the event, cover image, certificates, and all associated data. Registration records will be kept.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="border border-red-500/40 text-red-500 hover:bg-red-500/10 transition px-6 py-3 text-sm font-black uppercase tracking-wider"
+                style={{ fontFamily: '"Arial Black", sans-serif' }}
+              >
+                Delete Event
+              </button>
+            </div>
           </form>
+
+          {/* ── Delete Confirmation Modal ────────────────────── */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur">
+              <div className="bg-surface border border-white/10 rounded-lg p-8 max-w-md w-full mx-4">
+                <h2 className="text-2xl font-bold text-red-500 uppercase mb-4">DELETE EVENT?</h2>
+                <p className="text-gray-300 mb-4">
+                  This action cannot be undone. The following will be permanently deleted:
+                </p>
+                <ul className="text-sm text-gray-400 mb-4 ml-4 space-y-2">
+                  <li>• Event details and landing page</li>
+                  <li>• Cover image (from Cloudinary)</li>
+                  <li>• All certificates issued for this event</li>
+                  <li>• Certificate templates for this event</li>
+                  <li>• Promo email history for this event</li>
+                </ul>
+                <p className="text-xs text-gray-500 mb-6">
+                  Registration records will NOT be deleted.
+                </p>
+                {deleteError && (
+                  <p className="text-sm text-red-500 mb-4 bg-red-500/10 p-3 rounded">{deleteError}</p>
+                )}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setDeleteError(null);
+                    }}
+                    disabled={deleteLoading}
+                    className="flex-1 border border-gray-600 text-gray-400 hover:border-gray-400 px-4 py-2 rounded text-sm font-semibold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteEvent}
+                    disabled={deleteLoading}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-black uppercase disabled:opacity-50 transition"
+                  >
+                    {deleteLoading ? 'Deleting…' : 'Confirm Delete'}
+                  </button>
+                </div>
+              </div>
+        
+            </div>
+          )}
+          </>
         )}
-      </div>
 
       <div className="fixed top-4 right-4 space-y-2 z-50">
         {toasts.map((toast) => (
@@ -319,6 +404,8 @@ const EditEventPage = () => {
         ))}
       </div>
     </div>
+    </div>
+
   );
 };
 

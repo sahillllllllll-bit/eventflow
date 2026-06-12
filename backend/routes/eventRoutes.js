@@ -7,6 +7,7 @@ import {
   getEventById,
   updateEvent,
   deleteEvent,
+  hardDeleteEvent,
   publishEvent,
   getEventAnalytics,
   sendReminderToRegistrants,
@@ -60,6 +61,7 @@ router.get('/public', getPublicEvents);
 router.get('/:slug', getEventBySlug);
 router.put('/:id', auth, updateEvent);
 router.delete('/:id', auth, deleteEvent);
+router.delete('/:id/hard-delete', auth, hardDeleteEvent);
 router.post('/:id/publish', auth, publishEvent);
 router.post('/:id/upload-cover', auth, getEventCoverUploader().single('coverImage'), uploadEventCover);
 router.post('/:id/reminder', auth, validateSchema(z.object({ message: z.string().min(1, 'Message is required') })), sendReminderToRegistrants);

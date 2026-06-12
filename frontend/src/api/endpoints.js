@@ -17,10 +17,12 @@ export const authAPI = {
 export const eventAPI = {
   createEvent: (data) => axiosInstance.post('/events', data),
   getMyEvents: (params) => axiosInstance.get('/events/my', { params }),
+  getPublicEvents: (params) => axiosInstance.get('/events/public', { params }),
   getEventBySlug: (slug) => axiosInstance.get(`/events/${slug}`),
   getEventById: (id) => axiosInstance.get(`/events/id/${id}`),
   updateEvent: (id, data) => axiosInstance.put(`/events/${id}`, data),
   deleteEvent: (id) => axiosInstance.delete(`/events/${id}`),
+  hardDeleteEvent: (id) => axiosInstance.delete(`/events/${id}/hard-delete`),
   publishEvent: (id) => axiosInstance.post(`/events/${id}/publish`),
   uploadEventCover: (id, formData) => axiosInstance.post(`/events/${id}/upload-cover`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

@@ -9,7 +9,7 @@ const pricingItems = [
   { item: 'Paid Registration Processing', price: '1% platform fees + gateway fees', desc: 'Per successful registration (+2–3% payment gateway charges)' },
   { item: 'Ticket Generation', price: '₹0', desc: 'Instant downloadable ticket with QR code' },
   { item: 'Reminder / Promo Emails', price: '₹0.20', desc: 'Per email sent to attendees' },
-  { item: 'Registration Confirmation Emails', price: '₹0.20', desc: 'Auto ticket & event confirmation emails' },
+  { item: 'Registration Confirmation Emails', price: '₹0', desc: 'Auto ticket & event confirmation emails' },
   { item: 'Certificate Generation', price: '₹0.60', desc: 'Generate custom certificates with QR & branding' },
   { item: 'Certificate Email Delivery', price: 'Included', desc: 'Auto-send certificates to attendees' },
   { item: 'QR Check-in System', price: '₹0', desc: 'Scan attendee tickets during event entry' },

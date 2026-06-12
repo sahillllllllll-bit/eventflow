@@ -30,6 +30,14 @@ export const registerForEvent = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Event not found' });
     }
 
+    // Check registration closed
+    const now = new Date();
+    const isRegistrationClosed = (event.registrationClosesAt && now > new Date(event.registrationClosesAt)) || 
+                                  (event.endDate && now > new Date(event.endDate));
+    if (isRegistrationClosed) {
+      return res.status(400).json({ success: false, message: 'Registration for this event has closed' });
+    }
+
     // Check capacity
     if (event.maxCapacity && event.currentRegistrations >= event.maxCapacity) {
       return res.status(400).json({ success: false, message: 'Event is full' });

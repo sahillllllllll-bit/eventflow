@@ -10,6 +10,7 @@ import RegistrationForm from '../components/RegistrationForm.jsx';
 import Modal from '../components/Modal.jsx';
 import useRazorpay from '../hooks/useRazorpay.js';
 import useToast, { Toast } from '../hooks/useToast.jsx';
+import { formatEventDate } from '../utils/helpers.js';
 import { CheckCircle, Copy, Mail, Zap, ShieldCheck, CreditCard, Lock } from 'lucide-react';
 
 const PublicRegistrationPage = () => {
@@ -150,6 +151,8 @@ const PublicRegistrationPage = () => {
   if (!event) return null;
 
   const isFull = event.maxCapacity && event.currentRegistrations >= event.maxCapacity;
+  const isRegistrationClosed = (event.registrationClosesAt && new Date() > new Date(event.registrationClosesAt)) || 
+                                (event.endDate && new Date() > new Date(event.endDate));
 
   return (
     <div className="min-h-screen bg-bg text-white">
@@ -172,7 +175,7 @@ const PublicRegistrationPage = () => {
         <div className="mb-10">
           <h1 className="text-4xl font-bold mb-3">{event.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-gray-400 text-sm">
-            <span>📅 {new Date(event.date).toLocaleDateString('en-IN', { dateStyle: 'long' })}</span>
+            <span>📅 {formatEventDate(event.date)}</span>
             <span>📍 {event.isOnline ? 'Online Event' : event.venue}</span>
             {event.isPaid && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/10 border border-brand/30 rounded-full text-brand text-xs font-semibold">
@@ -183,15 +186,22 @@ const PublicRegistrationPage = () => {
           </div>
         </div>
 
+        {/* Registration Closed Warning */}
+        {isRegistrationClosed && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300">
+            ⚠️ Registration for this event has closed.
+          </div>
+        )}
+
         {/* Capacity Warning */}
-        {isFull && (
+        {isFull && !isRegistrationClosed && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300">
             ⚠️ This event has reached maximum capacity. Registrations are now closed.
           </div>
         )}
 
         {/* Secure checkout notice — paid only */}
-        {event.isPaid && !isFull && (
+        {event.isPaid && !isFull && !isRegistrationClosed && (
           <div className="mb-6 p-4 bg-surface-raised border border-border rounded-xl flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-brand mt-0.5 shrink-0" />
             <div>
@@ -208,7 +218,7 @@ const PublicRegistrationPage = () => {
         )}
 
         {/* Form */}
-        {!isFull && (
+        {!isFull && !isRegistrationClosed && (
           <div className="bg-surface-raised border border-border rounded-xl p-8">
             <h2 className="text-lg font-semibold mb-1">Your Details</h2>
             <p className="text-gray-400 text-sm mb-6">
@@ -277,7 +287,7 @@ const PublicRegistrationPage = () => {
         )}
 
         {/* Trust badge — paid only */}
-        {event.isPaid && !isFull && (
+        {event.isPaid && !isFull && !isRegistrationClosed && (
           <p className="mt-4 text-center text-xs text-gray-500">
             🔒 Payments processed securely by Razorpay · PCI-DSS compliant
           </p>

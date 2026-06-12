@@ -67,6 +67,7 @@ const eventSchema = new mongoose.Schema({
 
   date: Date,
   endDate: Date,
+  registrationClosesAt: Date,
   venue: String,
   venueMapLink: String,
   isOnline: { type: Boolean, default: false },
