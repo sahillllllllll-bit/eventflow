@@ -25,7 +25,7 @@ import { getTemplateWithDecorations } from '../utils/prebuiltTemplates.js';
 import CanvasCertificateEditor from '../components/CanvasCertificateEditor.jsx';
 import { renderCertificateToDOM } from '../services/certificateRenderer.js';
 
-const CERT_PRICE_PER = 0.60; // ₹0.60 per certificate — matches PricingPage
+const CERT_PRICE_PER = 0.20; // ₹0.20 per certificate — matches PricingPage
 
 export default function CertificatePage() {
   const navigate = useNavigate();
