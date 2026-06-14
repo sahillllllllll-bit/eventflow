@@ -43,7 +43,7 @@ export const createOrder = async (req, res, next) => {
       if (!count || count <= 0)
         return res.status(400).json({ success: false, message: 'count required' });
 
-      amountInRupees = parseFloat((count * 0.60).toFixed(2));
+      amountInRupees = parseFloat((count * 0.20).toFixed(2));
       const eid      = eventId ? eventId.toString().slice(-8) : 'na';
       receipt        = `crt_${eid}_${Math.floor(Date.now() / 1000)}`;
       notes          = { type, count: String(count), eventId: eventId?.toString() || '' };
