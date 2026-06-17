@@ -233,56 +233,78 @@ export const getIssuedCertificatesHandler = async (req, res) => {
 };
 
 // Download certificate as PDF
+// ── PATCH: Add/replace your downloadCertificatePDF handler with this ─────────
+// In your certificateController.js, find downloadCertificatePDF and replace it:
+
 export const downloadCertificatePDF = async (req, res) => {
   try {
     const { certificateId } = req.params;
-    const cert = await CertificateIssued.findById(certificateId)
-      .populate('templateId')
-      .populate('eventId');
 
-    if (!cert) {
-      return res.status(404).json({ error: 'Certificate not found' });
-    }
+    const cert = await CertificateIssued.findById(certificateId);
+    if (!cert) return res.status(404).json({ success: false, error: 'Certificate not found' });
 
-    if (!cert.eventId) {
-      return res.status(404).json({ error: 'Certificate event not found' }); 
-    }
+    // ── KEY FIX: use .lean() so Mongoose doesn't strip Mixed fields ──────────
+    // .toObject() on a Mongoose doc can lose Mixed array data; .lean() is safe
+    const template = await CertificateTemplate.findById(cert.templateId).lean();
+    if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
 
-    // Use the saved certificateData snapshot to maintain template consistency
-    const templateSnapshot = cert.certificateData || {};
-    const event = cert.eventId;
+    const event = await Event.findById(cert.eventId).lean();
 
-    // Return complete certificate data with template for client-side rendering
-    res.json({
+    const fileName = `certificate-${cert.recipientName?.replace(/\s+/g, '-')}-${cert.uniqueCode}.pdf`;
+
+    // Log to verify data is present
+    console.log('[downloadCertificatePDF] customElements count:', template.customElements?.length ?? 0);
+    console.log('[downloadCertificatePDF] designConfig:', template.designConfig);
+
+    return res.json({
       success: true,
       certificate: {
-        _id: cert._id,
         recipientName: cert.recipientName,
         recipientEmail: cert.recipientEmail,
         uniqueCode: cert.uniqueCode,
-        certificateData: cert.certificateData,
+        issuedAt: cert.issuedAt,
       },
+      // ── Send the full template including customElements and designConfig ──
       template: {
-        _id: templateSnapshot._id,
-        templateName: templateSnapshot.templateName,
-        backgroundColor: templateSnapshot.backgroundColor,
-        backgroundGradient: templateSnapshot.backgroundGradient,
-        borderStyle: templateSnapshot.borderStyle,
-        borderColor: templateSnapshot.borderColor,
-        borderWidth: templateSnapshot.borderWidth,
-        customElements: templateSnapshot.customElements,
-        designConfig: templateSnapshot.designConfig,
-        organizerName: templateSnapshot.organizerName,
+        // Canvas editor fields
+        customElements: template.customElements || [],
+        designConfig:   template.designConfig   || null,
+        // Flat fields (used by legacy HTML generator and as fallbacks)
+        backgroundColor:       template.backgroundColor,
+        backgroundGradient:    template.backgroundGradient,
+        borderStyle:           template.borderStyle,
+        borderColor:           template.borderColor,
+        borderWidth:           template.borderWidth,
+        heading:               template.heading,
+        headingColor:          template.headingColor,
+        headingFontSize:       template.headingFontSize,
+        subHeading:            template.subHeading,
+        subHeadingFontSize:    template.subHeadingFontSize,
+        descriptionText:       template.descriptionText,
+        descriptionFontSize:   template.descriptionFontSize,
+        descriptionColor:      template.descriptionColor,
+        recipientNameFontSize: template.recipientNameFontSize,
+        recipientNameColor:    template.recipientNameColor,
+        footerText:            template.footerText,
+        footerFontSize:        template.footerFontSize,
+        footerColor:           template.footerColor,
+        organizerName:         template.organizerName,
+        accentColor:           template.accentColor,
+        logo:                  template.logo,
+        logoWidth:             template.logoWidth,
+        logoHeight:            template.logoHeight,
+        templateDesign:        template.templateDesign,
+        previewVariant:        template.previewVariant,
       },
       event: {
-        _id: event._id,
-        title: event.title,
-        date: event.date,
+        title: event?.title || event?.name || '',
+        date:  event?.date  || new Date(),
       },
-      fileName: `certificate-${cert.recipientName.replace(/\s+/g, '-')}-${cert.uniqueCode}.pdf`,
+      fileName,
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('[downloadCertificatePDF] Error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 

@@ -7,28 +7,31 @@ function getBorderCSS(borderStyle, borderColor, borderWidth) {
   const w = borderWidth || 8;
   const c = borderColor || '#D4A574';
   switch (borderStyle) {
-    case 'none': return {};
-    case 'simple': return { border: `${w}px solid ${c}` };
-    case 'double': return { border: `${w}px double ${c}` };
+    case 'none':    return {};
+    case 'simple':  return { border: `${w}px solid ${c}` };
+    case 'double':  return { border: `${w}px double ${c}` };
     case 'elegant': return { border: `${w}px double ${c}`, boxShadow: `inset 0 0 0 3px ${c}33` };
-    case 'thick': return { border: `${w + 6}px solid ${c}`, boxShadow: `0 0 20px ${c}40` };
-    case 'modern': return { borderTop: `${w}px solid ${c}`, borderBottom: `${w}px solid ${c}` };
-    case 'shadow': return { boxShadow: `0 0 30px rgba(0,0,0,0.25), inset 0 0 0 2px ${c}` };
-    default: return { border: `${w}px solid ${c}` };
+    case 'thick':   return { border: `${w + 6}px solid ${c}`, boxShadow: `0 0 20px ${c}40` };
+    case 'modern':  return { borderTop: `${w}px solid ${c}`, borderBottom: `${w}px solid ${c}` };
+    case 'shadow':  return { boxShadow: `0 0 30px rgba(0,0,0,0.25), inset 0 0 0 2px ${c}` };
+    default:        return { border: `${w}px solid ${c}` };
   }
 }
 
 function ResizeHandle({ position, onMouseDown }) {
   const cursors = {
     nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize',
-    w: 'w-resize', e: 'e-resize',
+    w:  'w-resize',  e: 'e-resize',
     sw: 'sw-resize', s: 's-resize', se: 'se-resize',
   };
   const posStyles = {
-    nw: { top: -4, left: -4 }, n: { top: -4, left: '50%', transform: 'translateX(-50%)' },
-    ne: { top: -4, right: -4 }, w: { top: '50%', left: -4, transform: 'translateY(-50%)' },
-    e: { top: '50%', right: -4, transform: 'translateY(-50%)' },
-    sw: { bottom: -4, left: -4 }, s: { bottom: -4, left: '50%', transform: 'translateX(-50%)' },
+    nw: { top: -4, left: -4 },
+    n:  { top: -4, left: '50%', transform: 'translateX(-50%)' },
+    ne: { top: -4, right: -4 },
+    w:  { top: '50%', left: -4, transform: 'translateY(-50%)' },
+    e:  { top: '50%', right: -4, transform: 'translateY(-50%)' },
+    sw: { bottom: -4, left: -4 },
+    s:  { bottom: -4, left: '50%', transform: 'translateX(-50%)' },
     se: { bottom: -4, right: -4 },
   };
   return (
@@ -38,13 +41,14 @@ function ResizeHandle({ position, onMouseDown }) {
         position: 'absolute',
         width: HANDLE_SIZE, height: HANDLE_SIZE,
         background: '#3B82F6', border: '2px solid white', borderRadius: 2,
-        cursor: cursors[position], zIndex: 1000, ...posStyles[position],
+        cursor: cursors[position], zIndex: 1000,
+        ...posStyles[position],
       }}
     />
   );
 }
 
-function TextElement({ element, isSelected, isEditing, onStartEdit, onEndEdit, onUpdateLive, zoom }) {
+function TextElement({ element, isEditing, onStartEdit, onEndEdit }) {
   const textRef = useRef(null);
 
   useEffect(() => {
@@ -57,33 +61,56 @@ function TextElement({ element, isSelected, isEditing, onStartEdit, onEndEdit, o
     }
   }, [isEditing]);
 
+  const justifyContent = element.align === 'left'
+    ? 'flex-start'
+    : element.align === 'right'
+    ? 'flex-end'
+    : 'center';
+
   return (
     <div
       style={{
         width: '100%', height: '100%',
-        fontSize: element.fontSize || 24, color: element.color || '#333',
+        fontSize: element.fontSize || 24,
+        color: element.color || '#333',
         fontFamily: element.fontFamily || 'Georgia, serif',
-        fontWeight: element.fontWeight || 'normal', fontStyle: element.fontStyle || 'normal',
-        textDecoration: element.textDecoration || 'none', textAlign: element.align || 'center',
-        letterSpacing: element.letterSpacing || 0, lineHeight: element.lineHeight || 1.3,
-        opacity: element.opacity ?? 1, display: 'flex', alignItems: 'center',
-        justifyContent: element.align === 'left' ? 'flex-start' : element.align === 'right' ? 'flex-end' : 'center',
-        overflow: 'hidden', userSelect: isEditing ? 'text' : 'none',
-        cursor: isEditing ? 'text' : 'inherit', padding: '2px 4px',
+        fontWeight: element.fontWeight || 'normal',
+        fontStyle: element.fontStyle || 'normal',
+        textDecoration: element.textDecoration || 'none',
+        textAlign: element.align || 'center',
+        letterSpacing: element.letterSpacing || 0,
+        lineHeight: element.lineHeight || 1.3,
+        display: 'flex', alignItems: 'center', justifyContent,
+        overflow: 'hidden',
+        userSelect: isEditing ? 'text' : 'none',
+        padding: '2px 4px',
+        boxSizing: 'border-box',
       }}
       onDoubleClick={(e) => { e.stopPropagation(); onStartEdit(); }}
     >
       {isEditing ? (
         <div
-          ref={textRef} contentEditable suppressContentEditableWarning
+          ref={textRef}
+          contentEditable
+          suppressContentEditableWarning
           onBlur={(e) => onEndEdit(e.currentTarget.innerText)}
-          onKeyDown={(e) => { if (e.key === 'Escape') onEndEdit(e.currentTarget.innerText); }}
-          style={{ outline: 'none', minWidth: 20, width: '100%', textAlign: element.align || 'center', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onEndEdit(e.currentTarget.innerText);
+            e.stopPropagation();
+          }}
+          style={{
+            outline: 'none', minWidth: 20, width: '100%',
+            textAlign: element.align || 'center',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}
         >
           {element.content}
         </div>
       ) : (
-        <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', width: '100%', textAlign: element.align || 'center' }}>
+        <span style={{
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          width: '100%', textAlign: element.align || 'center',
+        }}>
           {element.content}
         </span>
       )}
@@ -92,12 +119,19 @@ function TextElement({ element, isSelected, isEditing, onStartEdit, onEndEdit, o
 }
 
 function ShapeElement({ element }) {
-  const { shapeType, fillColor, strokeColor, strokeWidth, width, height } = element;
+  const { shapeType, fillColor, strokeColor, strokeWidth = 2, width = 100, height = 100 } = element;
+
+  // ── FIX: treat 'transparent' fillColor correctly in SVG ──────────────────
+  const fill = (!fillColor || fillColor === 'transparent') ? 'none' : fillColor;
+  const stroke = (!strokeColor || strokeColor === 'transparent') ? 'none' : strokeColor;
+
   if (shapeType === 'circle') {
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <ellipse cx={width / 2} cy={height / 2} rx={width / 2 - strokeWidth} ry={height / 2 - strokeWidth}
-          fill={fillColor || '#D4A574'} stroke={strokeColor || '#333'} strokeWidth={strokeWidth || 2} />
+        <ellipse cx={width / 2} cy={height / 2}
+          rx={Math.max(1, width / 2 - strokeWidth)}
+          ry={Math.max(1, height / 2 - strokeWidth)}
+          fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
       </svg>
     );
   }
@@ -105,30 +139,51 @@ function ShapeElement({ element }) {
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <line x1="0" y1={height / 2} x2={width} y2={height / 2}
-          stroke={strokeColor || '#333'} strokeWidth={strokeWidth || 2} />
+          stroke={stroke} strokeWidth={strokeWidth} />
       </svg>
     );
   }
   if (shapeType === 'triangle') {
-    const pts = `${width / 2},0 ${width},${height} 0,${height}`;
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <polygon points={pts} fill={fillColor || '#D4A574'} stroke={strokeColor || '#333'} strokeWidth={strokeWidth || 2} />
+        <polygon points={`${width / 2},0 ${width},${height} 0,${height}`}
+          fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
       </svg>
     );
   }
+  // rectangle (default)
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <rect x={strokeWidth} y={strokeWidth} width={width - strokeWidth * 2} height={height - strokeWidth * 2}
-        fill={fillColor || '#D4A574'} stroke={strokeColor || '#333'} strokeWidth={strokeWidth || 2} />
+      <rect x={strokeWidth / 2} y={strokeWidth / 2}
+        width={Math.max(0, width - strokeWidth)}
+        height={Math.max(0, height - strokeWidth)}
+        fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
     </svg>
   );
 }
 
-function CanvasElement({ element, isSelected, store, zoom, editingId, setEditingId }) {
+// ── Helper: is this element visually transparent (no solid fill)? ────────────
+// Used to decide whether clicks should pass through to layers below.
+function isTransparentElement(element) {
+  if (element.type !== 'shape') return false;
+  const fill = element.fillColor;
+  return !fill || fill === 'transparent' || fill === 'none';
+}
+
+function CanvasElement({ element, isSelected, store, zoom, editingId, setEditingId, onClickThrough }) {
   const handleMouseDown = useCallback((e) => {
     if (element.isLocked) return;
     if (editingId === element.id) return;
+
+    // ── FIX: if transparent AND not selected, let click fall through ─────────
+    // Only allow interaction if the element is already selected OR has a fill
+    if (isTransparentElement(element) && !isSelected) {
+      // Don't call stopPropagation — let the event bubble to the canvas
+      // which will then try to hit-test the next element
+      onClickThrough && onClickThrough(e, element);
+      return;
+    }
+
     e.stopPropagation();
     store.getState().selectElement(element.id, e.shiftKey);
 
@@ -148,7 +203,7 @@ function CanvasElement({ element, isSelected, store, zoom, editingId, setEditing
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [element, zoom, store, editingId]);
+  }, [element, zoom, store, editingId, isSelected, onClickThrough]);
 
   const handleResizeMouseDown = useCallback((e, handle) => {
     if (element.isLocked) return;
@@ -179,6 +234,12 @@ function CanvasElement({ element, isSelected, store, zoom, editingId, setEditing
 
   if (element.isHidden) return null;
 
+  // ── FIX: transparent unselected shapes use pointer-events:none on their
+  // inner content so SVG doesn't swallow mouse events, BUT the wrapper div
+  // still needs to be clickable when selected (to allow drag/resize).
+  const isTransparent = isTransparentElement(element);
+  const pointerEventsStyle = isTransparent && !isSelected ? 'none' : 'auto';
+
   return (
     <div
       style={{
@@ -187,32 +248,44 @@ function CanvasElement({ element, isSelected, store, zoom, editingId, setEditing
         width: element.width || 200, height: element.height || 60,
         transform: `rotate(${element.rotation || 0}deg)`,
         transformOrigin: 'center center',
-        cursor: element.isLocked ? 'default' : 'move',
-        zIndex: element.zIndex || 0, opacity: element.opacity ?? 1,
+        // ── FIX: transparent unselected → pass pointer events through ────────
+        pointerEvents: pointerEventsStyle,
+        cursor: element.isLocked ? 'default' : (isTransparent && !isSelected ? 'default' : 'move'),
+        zIndex: element.zIndex || 0,
+        opacity: element.opacity ?? 1,
         outline: isSelected ? '2px solid #3B82F6' : 'none',
-        outlineOffset: 1, boxSizing: 'border-box',
+        outlineOffset: 1,
+        boxSizing: 'border-box',
       }}
       onMouseDown={handleMouseDown}
     >
       {element.type === 'text' && (
         <TextElement
-          element={element} isSelected={isSelected} isEditing={editingId === element.id}
+          element={element}
+          isEditing={editingId === element.id}
           onStartEdit={() => setEditingId(element.id)}
-          onEndEdit={(text) => { store.getState().updateElement(element.id, { content: text }); setEditingId(null); }}
-          zoom={zoom}
+          onEndEdit={(text) => {
+            store.getState().updateElement(element.id, { content: text });
+            setEditingId(null);
+          }}
         />
       )}
-      {element.type === 'image' && (
-        <img src={element.src} alt="" draggable={false}
-          style={{ width: '100%', height: '100%', objectFit: element.objectFit || 'contain', borderRadius: element.borderRadius || 0, pointerEvents: 'none' }}
-        />
+      {(element.type === 'image') && (
+        <img src={element.src} alt="" draggable={false} style={{
+          width: '100%', height: '100%',
+          objectFit: element.objectFit || 'contain',
+          borderRadius: element.borderRadius || 0,
+          pointerEvents: 'none',
+        }} />
       )}
       {element.type === 'shape' && <ShapeElement element={element} />}
       {element.type === 'qrcode' && (
-        <img src={element.src} alt="QR" draggable={false}
-          style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+        <img src={element.src} alt="QR" draggable={false} style={{
+          width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
+        }} />
       )}
 
+      {/* Resize handles — always shown when selected, use auto pointer events */}
       {isSelected && !element.isLocked && (
         ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'].map(h => (
           <ResizeHandle key={h} position={h} onMouseDown={handleResizeMouseDown} />
@@ -220,55 +293,91 @@ function CanvasElement({ element, isSelected, store, zoom, editingId, setEditing
       )}
 
       {element.isLocked && isSelected && (
-        <div style={{ position: 'absolute', top: -16, right: 0, fontSize: 10, color: '#f59e0b', background: '#1f2937', padding: '1px 4px', borderRadius: 3 }}>🔒</div>
+        <div style={{
+          position: 'absolute', top: -16, right: 0,
+          fontSize: 10, color: '#f59e0b',
+          background: '#1f2937', padding: '1px 4px', borderRadius: 3,
+          pointerEvents: 'none',
+        }}>🔒</div>
       )}
     </div>
   );
 }
 
-// ─── ADDITION 1: Module-level ref so certificateExport.js can grab the DOM node ───
-// Export this function — certificateExport.js calls getCertificateCanvasElement()
-// instead of document.getElementById() which never worked.
+// Module-level ref for export service
 let _canvasNode = null;
-export function getCertificateCanvasElement() {
-  return _canvasNode;
-}
+export function getCertificateCanvasElement() { return _canvasNode; }
 
 export default function Canvas({ store, storeState, template, canvasRef: externalRef }) {
-  // ─── ADDITION 2: internal ref that also writes to the module-level var ───
   const canvasWrapRef = useRef(null);
   const [editingId, setEditingId] = useState(null);
 
-  // ─── ADDITION 3: callback ref that syncs to module var + optional external ref ───
-  const setCanvasRef = useCallback((node) => {
+  const setRef = useCallback((node) => {
     canvasWrapRef.current = node;
-    _canvasNode = node;                          // ← makes getCertificateCanvasElement() work
-    if (externalRef) externalRef.current = node; // ← optional forwarded ref from parent
+    _canvasNode = node;
+    if (externalRef) externalRef.current = node;
   }, [externalRef]);
 
-  const { elements, selectedElementIds, designConfig, zoom, showGrid } = storeState;
+  const { elements, selectedElementIds, designConfig, zoom, showGrid, gridSize } = storeState;
+  const { width = 1050, height = 744 } = designConfig;
 
   const bgStyle = designConfig.backgroundGradient
     ? { background: designConfig.backgroundGradient }
     : { backgroundColor: designConfig.backgroundColor || '#FFFFFF' };
 
-  const borderCSS = getBorderCSS(designConfig.borderStyle, designConfig.borderColor, designConfig.borderWidth);
+  const borderCSS = getBorderCSS(
+    designConfig.borderStyle,
+    designConfig.borderColor,
+    designConfig.borderWidth,
+  );
 
   const handleCanvasClick = useCallback((e) => {
-    if (e.target === canvasWrapRef.current || e.target.dataset.canvasBg) {
+    if (e.target === canvasWrapRef.current || e.target.dataset?.canvasBg) {
       store.getState().clearSelection();
       setEditingId(null);
     }
   }, [store]);
 
-  const { width = 1050, height = 744 } = designConfig;
+  // ── FIX: handle click-through from transparent elements ───────────────────
+  // When a transparent element passes its click, we try to hit-test the
+  // element directly below it (next lower zIndex at same position).
+  const handleClickThrough = useCallback((e, transparentEl) => {
+    const { elements: els } = store.getState();
+    const rect = canvasWrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const canvasX = (e.clientX - rect.left) / zoom;
+    const canvasY = (e.clientY - rect.top)  / zoom;
+
+    // Find the topmost non-transparent element under the cursor (excluding the transparent one)
+    const candidates = [...els]
+      .filter(el => el.id !== transparentEl.id && !el.isHidden)
+      .filter(el => {
+        const x = el.x || 0, y = el.y || 0;
+        const w = el.width || 200, h = el.height || 60;
+        return canvasX >= x && canvasX <= x + w && canvasY >= y && canvasY <= y + h;
+      })
+      .sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)); // highest zIndex first
+
+    if (candidates.length > 0) {
+      store.getState().selectElement(candidates[0].id, e.shiftKey);
+    } else {
+      store.getState().clearSelection();
+    }
+  }, [store, zoom]);
+
+  const sortedElements = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
 
   return (
-    <div style={{ width: '100%', height: '100%', overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111827' }}>
+    <div style={{
+      width: '100%', height: '100%', overflow: 'auto',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#111827',
+    }}>
       <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', flexShrink: 0 }}>
         <div
-          ref={setCanvasRef}                   // ← CHANGED: was ref={canvasWrapRef}
-          data-certificate-canvas="true"       // ← CHANGED: was data-canvas-bg="true"
+          ref={setRef}
+          data-certificate-canvas="true"
           onClick={handleCanvasClick}
           style={{
             position: 'relative', width, height,
@@ -277,25 +386,36 @@ export default function Canvas({ store, storeState, template, canvasRef: externa
             boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
           }}
         >
+          {/* Grid */}
           {showGrid && (
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 999,
-              backgroundImage: `linear-gradient(rgba(59,130,246,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.15) 1px, transparent 1px)`,
-              backgroundSize: `${storeState.gridSize || 20}px ${storeState.gridSize || 20}px`,
+              backgroundImage: `
+                linear-gradient(rgba(59,130,246,0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.15) 1px, transparent 1px)
+              `,
+              backgroundSize: `${gridSize || 20}px ${gridSize || 20}px`,
             }} />
           )}
 
+          {/* Template decorations (background layer) */}
           {template?.previewVariant && (
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
               {getDecorationShapes(template.previewVariant)}
             </div>
           )}
 
-          {[...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).map(el => (
+          {/* Elements */}
+          {sortedElements.map(el => (
             <CanvasElement
-              key={el.id} element={el}
+              key={el.id}
+              element={el}
               isSelected={selectedElementIds.includes(el.id)}
-              store={store} zoom={zoom} editingId={editingId} setEditingId={setEditingId}
+              store={store}
+              zoom={zoom}
+              editingId={editingId}
+              setEditingId={setEditingId}
+              onClickThrough={handleClickThrough}
             />
           ))}
         </div>
