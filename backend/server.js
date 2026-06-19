@@ -19,7 +19,7 @@ import certificateRoutes from './routes/certificateRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import attendeeroutes from './routes/Attendeeroutes.js';
-import chatRoutes from './routes/chatRoutes.js';
+import chatRoutes from './routes/Chatroutes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
