@@ -455,3 +455,76 @@ export const uploadCertificateSignature = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+export const getAllIssuedByOrganizer = async (req, res) => {
+  try {
+    const organizerId = req.user._id;
+ 
+    // Get all events by this organiser
+    const events = await Event.find({ organizer: organizerId }, { _id: 1, title: 1, date: 1, coverImage: 1 }).lean();
+    const eventIds = events.map(e => e._id);
+ 
+    // Get all issued certs for these events
+    const issued = await CertificateIssued.find({ eventId: { $in: eventIds } })
+      .select('_id recipientName recipientEmail uniqueCode issuedAt emailStatus downloadCount certificatePDF eventId templateId')
+      .sort({ issuedAt: -1 })
+      .lean();
+ 
+    // Group by eventId
+    const eventMap = {};
+    events.forEach(ev => {
+      eventMap[ev._id.toString()] = {
+        event: ev,
+        certificates: [],
+      };
+    });
+ 
+    issued.forEach(cert => {
+      const key = cert.eventId?.toString();
+      if (key && eventMap[key]) {
+        eventMap[key].certificates.push(cert);
+      }
+    });
+ 
+    // Return only events that have certificates
+    const result = Object.values(eventMap).filter(g => g.certificates.length > 0);
+ 
+    return res.status(200).json({ success: true, groups: result });
+  } catch (error) {
+    console.error('[getAllIssuedByOrganizer]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+ 
+// ─────────────────────────────────────────────────────────────
+//  GET /api/certificates/attendee/mine?email=xxx
+//  Public — returns all certificates issued to a given email
+//  Used on the attendee profile page
+// ─────────────────────────────────────────────────────────────
+export const getCertificatesByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ success: false, error: 'email required' });
+ 
+    const issued = await CertificateIssued.find({ recipientEmail: email.trim().toLowerCase() })
+      .select('_id recipientName uniqueCode issuedAt emailStatus downloadCount eventId templateId')
+      .sort({ issuedAt: -1 })
+      .lean();
+ 
+    // Populate event info
+    const eventIds = [...new Set(issued.map(c => c.eventId?.toString()).filter(Boolean))];
+    const events   = await Event.find({ _id: { $in: eventIds } }, { title: 1, date: 1, coverImage: 1 }).lean();
+    const eventMap = {};
+    events.forEach(ev => { eventMap[ev._id.toString()] = ev; });
+ 
+    const result = issued.map(cert => ({
+      ...cert,
+      event: eventMap[cert.eventId?.toString()] || null,
+    }));
+ 
+    return res.status(200).json({ success: true, certificates: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+ 

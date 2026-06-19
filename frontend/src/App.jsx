@@ -38,6 +38,7 @@ import ProfilePage    from './pages/ProfilePage.jsx';
 import CommunityPage  from './pages/CommunityPage.jsx';
 import ChatRoomPage   from './pages/ChatRoomPage.jsx';
 import OrganizerChatPage  from './pages/OrganizerChatPage.jsx';  
+import AllCertificatesPage from './pages/AllCertificatesPage.jsx';
 
 
 function App() {
@@ -82,6 +83,7 @@ function App() {
 
            <Route path="/dashboard/chat"         element={<OrganizerChatPage />} />
           <Route path="/dashboard/chat/:eventId" element={<OrganizerChatPage />} />
+          <Route path="/dashboard/allcertificates" element={<AllCertificatesPage />} />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />

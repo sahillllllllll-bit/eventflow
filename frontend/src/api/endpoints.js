@@ -1,6 +1,6 @@
 import axiosInstance from './axios.js';
 
-// Auth APIs
+// Auth APIs — unchanged
 export const authAPI = {
   register: (data) => axiosInstance.post('/auth/register', data),
   login: (data) => axiosInstance.post('/auth/login', data),
@@ -13,7 +13,7 @@ export const authAPI = {
   }),
 };
 
-// Event APIs
+// Event APIs — unchanged
 export const eventAPI = {
   createEvent: (data) => axiosInstance.post('/events', data),
   getMyEvents: (params) => axiosInstance.get('/events/my', { params }),
@@ -35,7 +35,7 @@ export const eventAPI = {
   getAnalytics: (id) => axiosInstance.get(`/events/${id}/analytics`),
 };
 
-// Registration APIs
+// Registration APIs — unchanged
 export const registrationAPI = {
   registerForEvent: (data) => axiosInstance.post('/registrations', data),
   getEventRegistrations: (eventId, params) => axiosInstance.get(`/registrations/event/${eventId}`, { params }),
@@ -45,19 +45,19 @@ export const registrationAPI = {
   downloadTicket: (ticketId) => axiosInstance.get(`/registrations/download/${ticketId}`, { responseType: 'blob' }),
 };
 
-// Promo Email APIs
+// Promo Email APIs — unchanged
 export const promoAPI = {
   sendPromoEmail: (data) => axiosInstance.post('/promo/send', data),
   getHistory: (params) => axiosInstance.get('/promo/history', { params }),
 };
 
-// Payout APIs
+// Payout APIs — unchanged
 export const payoutAPI = {
   getSummary: () => axiosInstance.get('/payouts'),
   requestWithdrawal: (data) => axiosInstance.post('/payouts/request-withdrawal', data),
 };
 
-// Transaction APIs
+// Transaction APIs — unchanged
 export const transactionAPI = {
   getTransactions: (params) => axiosInstance.get('/transactions', { params }),
   getSummary: () => axiosInstance.get('/transactions/summary'),
@@ -66,22 +66,13 @@ export const transactionAPI = {
   getWithdrawals: () => axiosInstance.get('/transactions/withdrawals'),
 };
 
-// Payment APIs (Razorpay)
+// Payment APIs — unchanged
 export const paymentAPI = {
-  /**
-   * Create a Razorpay order.
-   * @param {{ type: 'registration'|'email_credits'|'certificates', eventId?: string, count?: number }} data
-   */
   createOrder: (data) => axiosInstance.post('/payments/create-order', data),
- 
-  /**
-   * Verify payment signature after Razorpay checkout completes.
-   * @param {{ razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string }} data
-   */
   verifyPayment: (data) => axiosInstance.post('/payments/verify', data),
 };
 
-// Certificate APIs
+// Certificate APIs — unchanged + 2 new at bottom
 export const certificateAPI = {
   // Events
   getOrganizerEvents: () => axiosInstance.get('/certificates/organizer/events'),
@@ -115,5 +106,11 @@ export const certificateAPI = {
 
   // Pricing
   getPricingInfo: () => axiosInstance.get('/certificates/pricing/info'),
-};
 
+  // ── NEW ──────────────────────────────────────────────────────
+  // Organiser: all issued certs grouped by event (for AllCertificatesPage)
+  getAllIssuedByOrganizer: () => axiosInstance.get('/certificates/organizer/all-issued'),
+
+  // Attendee: certs by email (public, for ProfilePage)
+  getCertificatesByEmail: (email) => axiosInstance.get('/certificates/attendee/mine', { params: { email } }),
+};
