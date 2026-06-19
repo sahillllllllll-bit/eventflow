@@ -4,7 +4,7 @@ import {
   registerForEvent, getEventRegistrations, checkInAttendee,
   exportRegistrationsCSV, downloadTicket, getTicketDetails, downloadTicketPDF,
 } from '../controllers/registrationController.js';
-import { getMyTicket } from '../controllers/MyTicketcontroller.js';  // ← NEW
+import { getMyTicket } from '../controllers/Myticketcontroller.js';  // ← NEW
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
 import { registrationLimiter } from '../middleware/rateLimiter.js';
