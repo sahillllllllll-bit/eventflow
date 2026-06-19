@@ -1,6 +1,10 @@
 import express from 'express';
 import { z } from 'zod';
-import { registerForEvent, getEventRegistrations, checkInAttendee, exportRegistrationsCSV, downloadTicket, getTicketDetails,downloadTicketPDF } from '../controllers/registrationController.js';
+import {
+  registerForEvent, getEventRegistrations, checkInAttendee,
+  exportRegistrationsCSV, downloadTicket, getTicketDetails, downloadTicketPDF,
+} from '../controllers/registrationController.js';
+import { getMyTicket } from '../controllers/MyTicketcontroller.js';  // ← NEW
 import { auth } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validate.js';
 import { registrationLimiter } from '../middleware/rateLimiter.js';
@@ -19,33 +23,23 @@ const registerSchema = z.object({
 
 const fileUploader = getRegistrationFileUploader();
 
-// ── Middleware to parse FormData fields that come as strings ──
 const parseFormDataFields = (req, res, next) => {
   try {
-    // Parse responses JSON string to object
     if (req.body.responses && typeof req.body.responses === 'string') {
-      try {
-        req.body.responses = JSON.parse(req.body.responses);
-      } catch (e) {
-        // If JSON parsing fails, treat as empty object
-        req.body.responses = {};
-      }
+      try { req.body.responses = JSON.parse(req.body.responses); }
+      catch { req.body.responses = {}; }
     }
-    
-    // Convert consentPromoEmails string to boolean
     if (req.body.consentPromoEmails !== undefined) {
       const val = req.body.consentPromoEmails;
       if (typeof val === 'string') {
-        req.body.consentPromoEmails = val === 'true' || val === '1' || val === 'true';
+        req.body.consentPromoEmails = val === 'true' || val === '1';
       }
     }
-    
     next();
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
+// ── Existing routes — unchanged ───────────────────────────────
 router.post('/', registrationLimiter, fileUploader.any(), parseFormDataFields, validateSchema(registerSchema), registerForEvent);
 router.get('/event/:eventId', auth, getEventRegistrations);
 router.post('/checkin/:ticketId', auth, checkInAttendee);
@@ -53,5 +47,8 @@ router.get('/export/:eventId', auth, exportRegistrationsCSV);
 router.get('/ticket/:ticketId', getTicketDetails);
 router.get('/download/:ticketId', downloadTicket);
 router.get('/ticket/:ticketId/download-pdf', downloadTicketPDF);
+
+// ── NEW: attendee gets their own ticket for an event ──────────
+router.get('/my-ticket', getMyTicket);   // ?eventId=xxx&email=xxx  (public)
 
 export default router;

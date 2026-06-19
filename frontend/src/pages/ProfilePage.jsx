@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft, MessageSquare, Calendar, MapPin,
   Shield, ShieldCheck, LogOut, Award, Download, Loader,
+  ExternalLink, Ticket, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { useAttendee } from '../context/AttendeeContext.jsx';
 import axiosInstance from '../api/axios.js';
-import { certificateAPI } from '../api/endpoints.js';
+import { certificateAPI, registrationAPI } from '../api/endpoints.js';
 import RestoreAccessModal from '../components/profile/RestoreAccessModal.jsx';
 import SetPasswordModal from '../components/profile/SetPasswordModal.jsx';
 import AttendeeLoginModal from '../components/profile/AttendeeLoginModal.jsx';
@@ -28,46 +29,214 @@ const waitForImages = (container) => {
   ));
 };
 
-// ── Joined event card ─────────────────────────────────────────
-const JoinedEventCard = ({ event }) => {
-  const isPast = event.endDate ? new Date(event.endDate) < new Date() : false;
+// ─────────────────────────────────────────────────────────────
+//  JoinedEventCard
+//  Shows event info + chatroom + ticket download + event page
+// ─────────────────────────────────────────────────────────────
+const JoinedEventCard = ({ event, attendeeEmail }) => {
+  const isPast        = event.endDate ? new Date(event.endDate) < new Date() : false;
+  const [ticket, setTicket]         = useState(null);
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [ticketError, setTicketError]     = useState('');
+  const [expanded, setExpanded]     = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // Fetch ticket details for this event+email on expand
+  const loadTicket = async () => {
+    if (ticket || ticketLoading) return;
+    setTicketLoading(true);
+    setTicketError('');
+    try {
+      // Find ticketId by looking up registration by email+event
+      // We use the public ticket search: GET /registrations/ticket/:ticketId
+      // But we need ticketId — so we search via a helper endpoint
+      // Since we don't have a direct "get my ticket for event" endpoint,
+      // we use the event slug + email pattern via axiosInstance
+      const res = await axiosInstance.get('/registrations/my-ticket', {
+        params: { eventId: event._id, email: attendeeEmail },
+      });
+      setTicket(res.data.ticket || null);
+    } catch {
+      setTicketError('Ticket not found for this event.');
+    } finally {
+      setTicketLoading(false);
+    }
+  };
+
+  const handleExpand = () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next) loadTicket();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!ticket?.ticketId) return;
+    setDownloading(true);
+    try {
+      const res = await axiosInstance.get(
+        `/registrations/ticket/${ticket.ticketId}/download-pdf`,
+        { responseType: 'blob' }
+      );
+      const url  = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href     = url;
+      link.download = `ticket-${ticket.ticketId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // fallback to HTML download
+      try {
+        const res = await axiosInstance.get(
+          `/registrations/download/${ticket.ticketId}`,
+          { responseType: 'blob' }
+        );
+        const url  = window.URL.createObjectURL(new Blob([res.data], { type: 'text/html' }));
+        const link = document.createElement('a');
+        link.href     = url;
+        link.download = `ticket-${ticket.ticketId}.html`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Ticket download failed:', e);
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
-    <div className="border border-white/10 hover:border-white/20 transition p-4 flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-white font-black uppercase text-sm truncate"
-            style={{ fontFamily: '"Arial Black", sans-serif' }}>
-            {event.title}
-          </p>
-          <div className="flex items-center gap-2 mt-1 text-gray-500 text-xs">
-            <Calendar className="w-3 h-3 shrink-0" />
-            <span>{fmtDate(event.date)}</span>
+    <div className="border border-white/10 hover:border-white/20 transition flex flex-col">
+      {/* Main row */}
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p
+              className="text-white font-black uppercase text-sm truncate"
+              style={{ fontFamily: '"Arial Black", sans-serif' }}
+            >
+              {event.title}
+            </p>
+            <div className="flex items-center gap-2 mt-1 text-gray-500 text-xs">
+              <Calendar className="w-3 h-3 shrink-0" />
+              <span>{fmtDate(event.date)}</span>
+            </div>
+            {event.venue && (
+              <div className="flex items-center gap-2 mt-0.5 text-gray-500 text-xs">
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{event.venue}</span>
+              </div>
+            )}
           </div>
-          {event.venue && (
-            <div className="flex items-center gap-2 mt-0.5 text-gray-500 text-xs">
-              <MapPin className="w-3 h-3 shrink-0" />
-              <span className="truncate">{event.venue}</span>
+          {isPast && (
+            <span className="text-xs text-gray-600 border border-white/10 px-2 py-0.5 shrink-0">
+              Past
+            </span>
+          )}
+        </div>
+
+        {/* Action buttons row */}
+        <div className="flex flex-wrap gap-2">
+          {/* Open chatroom */}
+          <Link
+            to={`/chat/${event._id}`}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest transition flex-1 min-w-0 justify-center"
+            style={{
+              fontFamily: '"Arial Black", sans-serif',
+              letterSpacing: '0.1em',
+              borderLeft: '3px solid #6c5ce7',
+              background: 'rgba(108,92,231,0.08)',
+              color: '#a29bfe',
+            }}
+          >
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Chatroom</span>
+          </Link>
+
+          {/* View event landing page */}
+          {event.slug && (
+            <a
+              href={`/e/${event.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest border border-white/10 hover:border-white/30 text-gray-500 hover:text-white transition"
+              style={{ fontFamily: '"Arial Black", sans-serif', letterSpacing: '0.1em' }}
+            >
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span>Event Detail</span>
+            </a>
+          )}
+
+          {/* Ticket expand toggle */}
+          <button
+            onClick={handleExpand}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest border border-white/10 hover:border-white/30 text-gray-500 hover:text-white transition"
+            style={{ fontFamily: '"Arial Black", sans-serif', letterSpacing: '0.1em' }}
+          >
+            <Ticket className="w-3.5 h-3.5 shrink-0" />
+            <span>Ticket</span>
+            {expanded
+              ? <ChevronUp className="w-3 h-3" />
+              : <ChevronDown className="w-3 h-3" />
+            }
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable ticket section */}
+      {expanded && (
+        <div className="border-t border-white/5 bg-white/[0.02] px-4 py-3">
+          {ticketLoading && (
+            <div className="flex items-center gap-2 text-gray-500 text-xs py-2">
+              <Loader className="w-3.5 h-3.5 animate-spin" />
+              Loading ticket…
+            </div>
+          )}
+
+          {ticketError && (
+            <p className="text-gray-600 text-xs py-2">{ticketError}</p>
+          )}
+
+          {ticket && !ticketLoading && (
+            <div className="flex flex-col gap-3">
+              {/* Ticket details */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div>
+                  <p className="text-gray-600 uppercase tracking-widest text-[10px]">Ticket ID</p>
+                  <p className="text-white font-mono font-bold mt-0.5">{ticket.ticketId}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 uppercase tracking-widest text-[10px]">Status</p>
+                  <p className={`font-bold mt-0.5 ${ticket.checkedIn ? 'text-green-400' : 'text-gray-400'}`}>
+                    {ticket.checkedIn ? '✓ Checked In' : '◯ Not checked in'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600 uppercase tracking-widest text-[10px]">Name</p>
+                  <p className="text-gray-300 mt-0.5">{ticket.attendeeName}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 uppercase tracking-widest text-[10px]">Registered</p>
+                  <p className="text-gray-300 mt-0.5">{fmtDate(ticket.registeredAt)}</p>
+                </div>
+              </div>
+
+              {/* Download button */}
+              <button
+                onClick={handleDownloadPDF}
+                disabled={downloading}
+                className="flex items-center justify-center gap-2 px-3 py-2 border border-white/15 hover:border-white/30 text-gray-400 hover:text-white text-xs font-black uppercase tracking-widest transition disabled:opacity-50 w-full"
+                style={{ fontFamily: '"Arial Black", sans-serif' }}
+              >
+                {downloading
+                  ? <Loader className="w-3.5 h-3.5 animate-spin" />
+                  : <Download className="w-3.5 h-3.5" />
+                }
+                {downloading ? 'Downloading…' : 'Download Ticket PDF'}
+              </button>
             </div>
           )}
         </div>
-        {isPast && (
-          <span className="text-xs text-gray-600 border border-white/10 px-2 py-0.5 shrink-0">Past</span>
-        )}
-      </div>
-      <Link
-        to={`/chat/${event._id}`}
-        className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-widest transition"
-        style={{
-          fontFamily: '"Arial Black", sans-serif',
-          letterSpacing: '0.12em',
-          borderLeft: '3px solid #6c5ce7',
-          background: 'rgba(108,92,231,0.08)',
-          color: '#a29bfe',
-        }}
-      >
-        <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-        Open Chatroom
-      </Link>
+      )}
     </div>
   );
 };
@@ -127,7 +296,6 @@ const ProfilePage = () => {
   const [showSetPw, setShowSetPw]       = useState(false);
   const [showLogin, setShowLogin]       = useState(false);
 
-  // Load profile
   useEffect(() => {
     if (!attendee?.userId) return;
     setLoading(true);
@@ -137,7 +305,6 @@ const ProfilePage = () => {
       .finally(() => setLoading(false));
   }, [attendee?.userId]);
 
-  // Load certificates by email
   useEffect(() => {
     if (!attendee?.email) return;
     setCertsLoading(true);
@@ -147,23 +314,18 @@ const ProfilePage = () => {
       .finally(() => setCertsLoading(false));
   }, [attendee?.email]);
 
-  // Download certificate
-  const handleDownload = async (certId, format) => {
+  const handleCertDownload = async (certId, format) => {
     setDownloading(certId);
     try {
       const res = await certificateAPI.downloadCertificatePDF(certId);
       if (!res.data.success) return;
-
       const { certificate, template, event } = res.data;
-
       const container = document.createElement('div');
       container.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(container);
-
       renderCertificateToDOM(
         { name: certificate.recipientName, uniqueCode: certificate.uniqueCode },
-        container,
-        template,
+        container, template,
         {
           eventName: event.title,
           date: new Date(event.date).toLocaleDateString('en-IN', {
@@ -171,18 +333,14 @@ const ProfilePage = () => {
           }),
         }
       );
-
       const html2canvas = (await import('html2canvas')).default;
       const certCanvas  = container.querySelector('[data-certificate-canvas]');
       if (!certCanvas) throw new Error('Render failed');
-
       await waitForImages(certCanvas);
       const canvas = await html2canvas(certCanvas, {
         scale: 3, useCORS: true, allowTaint: true,
-        backgroundColor: '#ffffff',
-        windowHeight: 744, windowWidth: 1050, logging: false,
+        backgroundColor: '#ffffff', windowHeight: 744, windowWidth: 1050, logging: false,
       });
-
       if (format === 'pdf') {
         const { jsPDF } = await import('jspdf');
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1050, 744] });
@@ -196,7 +354,7 @@ const ProfilePage = () => {
       }
       document.body.removeChild(container);
     } catch (err) {
-      console.error('Download error:', err);
+      console.error('Cert download error:', err);
     } finally {
       setDownloading(null);
     }
@@ -247,7 +405,6 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-bg text-white">
-      {/* Nav */}
       <nav className="border-b border-border px-4 sm:px-6 py-4 bg-bg/95 backdrop-blur sticky top-0 z-50">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -269,7 +426,7 @@ const ProfilePage = () => {
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
-        {/* ── Profile card ──────────────────────────────────────── */}
+        {/* Profile card */}
         <div className="border border-white/10 p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -290,14 +447,11 @@ const ProfilePage = () => {
                 </div>
             }
           </div>
-
           {attendee.expiresAt && (
             <p className="text-gray-700 text-xs mt-3">
               Session active until {fmtDate(attendee.expiresAt)}
             </p>
           )}
-
-          {/* Security toggle */}
           <div className="mt-4 pt-4 border-t border-white/5">
             {!attendee.hasPassword ? (
               <button onClick={() => setShowSetPw(true)}
@@ -315,19 +469,17 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* ── Joined events ─────────────────────────────────────── */}
+        {/* Joined events */}
         <div>
           <p className="text-gray-600 text-xs uppercase tracking-widest font-bold mb-4"
             style={{ fontFamily: '"Arial Black", sans-serif' }}>
             {events.length} joined event{events.length !== 1 ? 's' : ''}
           </p>
-
           {loading && (
             <div className="flex flex-col gap-3">
               {[1,2].map(i => <div key={i} className="h-28 bg-white/5 animate-pulse" />)}
             </div>
           )}
-
           {!loading && events.length === 0 && (
             <div className="text-center py-12 border border-white/5">
               <p className="text-gray-700 text-sm">No events joined yet.</p>
@@ -336,40 +488,40 @@ const ProfilePage = () => {
               </Link>
             </div>
           )}
-
           <div className="flex flex-col gap-3">
             {events.map(event => (
-              <JoinedEventCard key={event._id} event={event} />
+              <JoinedEventCard
+                key={event._id}
+                event={event}
+                attendeeEmail={attendee.email}
+              />
             ))}
           </div>
         </div>
 
-        {/* ── Issued certificates ───────────────────────────────── */}
+        {/* Certificates */}
         <div>
           <p className="text-gray-600 text-xs uppercase tracking-widest font-bold mb-4"
             style={{ fontFamily: '"Arial Black", sans-serif' }}>
             Your issued certificates
           </p>
-
           {certsLoading && (
             <div className="flex flex-col gap-3">
               {[1,2].map(i => <div key={i} className="h-20 bg-white/5 animate-pulse" />)}
             </div>
           )}
-
           {!certsLoading && certs.length === 0 && (
             <div className="text-center py-12 border border-white/5">
               <Award className="w-8 h-8 text-gray-700 mx-auto mb-2" />
               <p className="text-gray-700 text-sm">No certificates issued to you yet.</p>
             </div>
           )}
-
           <div className="flex flex-col gap-3">
             {certs.map(cert => (
               <AttendeeCertCard
                 key={cert._id}
                 cert={cert}
-                onDownload={handleDownload}
+                onDownload={handleCertDownload}
                 downloading={downloading}
               />
             ))}
