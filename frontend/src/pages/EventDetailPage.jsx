@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import useToast, { Toast } from '../hooks/useToast.jsx';
 import useRazorpay from '../hooks/useRazorpay.js';
-import { Download, X, Eye, Menu, IndianRupee, Loader, AlertTriangle } from 'lucide-react';
+import { Download, X, Eye, Menu, IndianRupee, Loader, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const EventDetailPage = () => {
   const { id } = useParams();
@@ -460,17 +460,20 @@ const EventDetailPage = () => {
                         Open check-in
                       </button>
                       <button
-                        onClick={() => handleCopyLink(publicUrl, 'Landing page link copied')}
+                        
+                        onClick={() => window.open(`${publicUrl}`, '_blank')}
                         className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay text-sm"
                       >
-                        Copy landing link
+
+                      Open Landing page
                       </button>
                       <button
-                        onClick={() => window.open(`${publicUrl}/register`, '_blank')}
-                        className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay text-sm"
+                        onClick={() => navigate(`/dashboard/chat/${id}`)}
+                        className="w-full px-4 py-3 rounded-lg border border-surface-overlay text-white hover:bg-surface-overlay text-sm flex items-center justify-center gap-2"
                       >
-                        Open registration page
-                      </button>
+                        <MessageSquare className="w-4 h-4" />
+                        Community chatroom
+                    </button>
                     </div>
 
                     {/* ── Send Reminder Section ── */}

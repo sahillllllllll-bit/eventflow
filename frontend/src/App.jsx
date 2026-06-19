@@ -33,9 +33,16 @@ import {
   RefundPolicyPage
 } from './pages/LegalPages';
 import PricingPage from './pages/PricingPage.jsx';
+import { AttendeeProvider } from './context/AttendeeContext.jsx';
+import ProfilePage    from './pages/ProfilePage.jsx';
+import CommunityPage  from './pages/CommunityPage.jsx';
+import ChatRoomPage   from './pages/ChatRoomPage.jsx';
+import OrganizerChatPage  from './pages/OrganizerChatPage.jsx';  
+
 
 function App() {
   return (
+     <AttendeeProvider>
     <Router>
       <AuthProvider>
         <Routes>
@@ -69,12 +76,19 @@ function App() {
           <Route path="/dashboard/promo" element={<ProtectedRoute><PromoEmailPage /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/checkin/:eventId" element={<ProtectedRoute><CheckInPage /></ProtectedRoute>} />
+          <Route path="/profile"            element={<ProfilePage />} />
+          <Route path="/community"          element={<CommunityPage />} />
+          <Route path="/chat/:eventId"      element={<ChatRoomPage />} />
+
+           <Route path="/dashboard/chat"         element={<OrganizerChatPage />} />
+          <Route path="/dashboard/chat/:eventId" element={<OrganizerChatPage />} />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>
+    </AttendeeProvider>
   );
 }
 

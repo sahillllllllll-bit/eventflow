@@ -115,17 +115,16 @@ const PublicEventPage = () => {
 
             {/* Mobile & Tablet — stacked */}
             <div className="md:hidden flex flex-col gap-5 max-w-2xl mx-auto">
-              <div
-                className="w-full overflow-hidden border border-white/10"
-                style={{ maxHeight: '260px' }}
-              >
+
+              {/* ── FULL image, no height cap, no cropping ── */}
+              <div className="w-full border border-white/10 overflow-hidden">
                 <img
                   src={event.coverImage}
                   alt={event.title}
-                  className="w-full object-cover"
-                  style={{ maxHeight: '260px' }}
+                  className="w-full h-auto block"
                 />
               </div>
+
               <div className="text-center py-4 px-2">
                 <p
                   className="text-gray-600 uppercase tracking-widest text-xs font-black mb-3"
@@ -168,19 +167,19 @@ const PublicEventPage = () => {
               </div>
             </div>
 
-            {/* Desktop — side by side with gap and padding */}
-            <div className="hidden md:grid grid-cols-2 gap-8 lg:gap-12 items-center max-w-6xl mx-auto">
-              <div
-                className="overflow-hidden border border-white/10 w-full"
-                style={{ height: '400px', maxHeight: '440px' }}
-              >
+            {/* Desktop — image left, text right, image shows fully */}
+            <div className="hidden md:grid grid-cols-2 gap-8 lg:gap-12 items-start max-w-6xl mx-auto">
+
+              {/* ── FULL image, natural height, no cropping ── */}
+              <div className="w-full border border-white/10 overflow-hidden">
                 <img
                   src={event.coverImage}
                   alt={event.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto block"
                 />
               </div>
-              <div className="flex flex-col justify-center py-6">
+
+              <div className="flex flex-col justify-start py-4">
                 <p
                   className="text-gray-600 uppercase tracking-widest text-xs font-black mb-4"
                   style={{ fontFamily: '"Arial Black", sans-serif', letterSpacing: '0.2em' }}
@@ -225,7 +224,7 @@ const PublicEventPage = () => {
             </div>
           </>
         ) : (
-          /* ── NO COVER IMAGE — same padded layout ── */
+          /* ── NO COVER IMAGE — unchanged ── */
           <>
             {isRegistrationClosed && <StampOverlay size="lg" />}
             <div className="relative z-10 max-w-4xl mx-auto text-center py-16 sm:py-24 md:py-28 px-2">
@@ -496,7 +495,6 @@ const PublicEventPage = () => {
         </p>
       </footer>
 
-      {/* Toasts */}
       <div className="fixed bottom-6 right-4 sm:right-6 space-y-3 z-50">
         {toasts.map((toast) => (
           <Toast key={toast.id} message={toast.message} type={toast.type}

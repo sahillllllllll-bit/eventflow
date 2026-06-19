@@ -7,13 +7,11 @@ import { generatePDFFromHTML } from './generateTicketPDF.js';
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 // ─── Two Brevo senders ────────────────────────────────────────────────────────
-// Account 1: transactional (verification, ticket confirmation, team invite, password reset)
 const primaryHeaders = {
   'Content-Type': 'application/json',
   'api-key': process.env.BREVO_API_KEY,
 };
 
-// Account 2: notifications (reminders + withdrawal requests)
 const secondaryHeaders = {
   'Content-Type': 'application/json',
   'api-key': process.env.BREVO_API_KEY_2,
@@ -285,7 +283,6 @@ export const sendTicketConfirmationEmail = async (email, ticketData, qrCodeBase6
       ${calloutBlock}
     `, eventColor),
     attachments,
-    // Account 1 (default)
   });
 };
 
@@ -309,19 +306,16 @@ export const sendEventReminderEmail = async (email, eventData) => {
       ${message ? `<p style="margin-top:16px;padding:16px;background:#111;border-left:3px solid ${eventColor};border-radius:4px;">${message}</p>` : ''}
       <p style="margin-top:20px;color:#aaa;">Don't forget to bring your ticket QR code for check-in. See you there!</p>
     `, eventColor),
-    useSecondary: true,  // ← Account 2
+    useSecondary: true,
   });
 };
 
-// ─── 6. Withdrawal Request Notification  (Account 2 → your inbox) ────────────
-// Called when an organiser submits a withdrawal request.
-// Sends an internal alert to imaginesahll@gmail.com.
+// ─── 6. Withdrawal Request Notification  (Account 2) ─────────────────────────
 export const sendWithdrawalRequestNotification = async (organizerData) => {
   const {
     organizerName  = 'Unknown',
     organizerEmail = 'Unknown',
     amount         = 0,
-    // Payment details — all optional; organiser fills in whatever they have
     accountName    = '',
     accountNumber  = '',
     ifsc           = '',
@@ -329,9 +323,7 @@ export const sendWithdrawalRequestNotification = async (organizerData) => {
     displayName    = '',
   } = organizerData;
 
-  // Build a neat payment details block based on what was provided
   const paymentRows = [];
-
   if (accountName)   paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;width:160px;">Account Name</td><td style="padding:8px 0;color:#ddd;font-size:13px;">${accountName}</td></tr>`);
   if (accountNumber) paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">Account Number</td><td style="padding:8px 0;color:#ddd;font-size:13px;font-family:monospace;">${accountNumber}</td></tr>`);
   if (ifsc)          paymentRows.push(`<tr><td style="padding:8px 0;color:#888;font-size:13px;">IFSC Code</td><td style="padding:8px 0;color:#ddd;font-size:13px;font-family:monospace;">${ifsc}</td></tr>`);
@@ -342,9 +334,7 @@ export const sendWithdrawalRequestNotification = async (organizerData) => {
     ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">${paymentRows.join('')}</table>`
     : `<p style="margin:8px 0 0;color:#888;font-size:13px;font-style:italic;">No payment details provided.</p>`;
 
-  const submittedAt = new Date().toLocaleString('en-IN', {
-    dateStyle: 'full', timeStyle: 'short',
-  });
+  const submittedAt = new Date().toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' });
 
   await sendMail({
     to:      'chillpilltrio.business@gmail.com',
@@ -352,7 +342,6 @@ export const sendWithdrawalRequestNotification = async (organizerData) => {
     html:    emailWrapper(`
       <h2 style="margin:0 0 4px;color:#fff;font-size:22px;">New Withdrawal Request 💸</h2>
       <p style="margin:0 0 28px;color:#aaa;">Submitted at ${submittedAt}</p>
-
       <table width="100%" cellpadding="0" cellspacing="0"
         style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:24px;">
         <tr>
@@ -369,14 +358,99 @@ export const sendWithdrawalRequestNotification = async (organizerData) => {
           </td>
         </tr>
       </table>
-
       <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:20px 24px;margin-bottom:24px;">
         <p style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#666;">Payment Details</p>
         ${paymentBlock}
       </div>
-
       <p style="color:#888;font-size:13px;">Please process this withdrawal and update the organiser's payout status in the admin panel.</p>
     `),
-    useSecondary: true,  // ← Account 2
+    useSecondary: true,
   });
 };
+
+// ─────────────────────────────────────────────────────────────
+//  7. Attendee OTP Email  ← NEW (Account 1)
+//  Used for: restore access when localStorage cleared
+//           set password flow
+// ─────────────────────────────────────────────────────────────
+const otpBox = (otp) => `
+  <div style="margin:28px 0;text-align:center;">
+    <div style="display:inline-block;background:#111;border:2px solid #6C47FF;border-radius:12px;padding:24px 48px;">
+      <p style="margin:0 0 6px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:3px;">Your OTP</p>
+      <p style="margin:0;font-size:40px;font-weight:700;color:#fff;letter-spacing:10px;font-family:monospace;">${otp}</p>
+    </div>
+  </div>
+  <p style="text-align:center;color:#888;font-size:13px;">
+    Valid for <strong style="color:#ccc">10 minutes</strong>. Do not share this with anyone.
+  </p>
+`;
+
+export const sendAttendeeOTPEmail = async (email, name, otp, purpose) => {
+  const isRestore     = purpose === 'restore';
+  const isSetPassword = purpose === 'set_password';
+
+  const subject = isRestore
+    ? 'Your EventGlow access code 🔑'
+    : 'Set up your EventGlow password 🔐';
+
+  const title = isRestore
+    ? 'Restore Your Access 🔑'
+    : 'Set Up a Password 🔐';
+
+  const description = isRestore
+    ? `Hi <strong style="color:#fff">${name}</strong>, use the code below to restore access to your EventGlow profile and event chatrooms.`
+    : `Hi <strong style="color:#fff">${name}</strong>, you requested to add a password to your EventGlow account. Verify with the code below to continue.`;
+
+  const footer = isRestore
+    ? `<p style="color:#888;font-size:13px;margin-top:20px;">
+        Once verified, your joined events and chatrooms will be restored on this device.
+       </p>`
+    : `<p style="color:#888;font-size:13px;margin-top:20px;">
+        After setting a password, you can log in from any device at any time.
+       </p>`;
+
+  await sendMail({
+    to:      email,
+    subject,
+    html:    emailWrapper(`
+      <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">${title}</h2>
+      <p>${description}</p>
+      ${otpBox(otp)}
+      ${footer}
+      <p style="color:#888;font-size:12px;margin-top:16px;">
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    `),
+  });
+};
+
+// ─────────────────────────────────────────────────────────────
+//  8. Organiser announcement to all event attendees  ← NEW
+//  Call this when organiser sends a broadcast message
+// ─────────────────────────────────────────────────────────────
+export const sendOrganizerAnnouncementEmail = async (attendeeEmails, eventTitle, message, organizerName) => {
+  const promises = attendeeEmails.map((email) =>
+    sendMail({
+      to:      email,
+      subject: `📢 Update from organiser — ${eventTitle}`,
+      html:    emailWrapper(`
+        <h2 style="margin:0 0 12px;color:#fff;font-size:22px;">Message from ${organizerName} 📢</h2>
+        <p style="color:#aaa;">You received this because you registered for <strong style="color:#fff">${eventTitle}</strong>.</p>
+        <div style="margin:24px 0;background:#111;border-left:3px solid #6C47FF;border-radius:4px;padding:16px 20px;">
+          <p style="margin:0;color:#e0e0e0;font-size:15px;line-height:1.7;">${message}</p>
+        </div>
+        <p style="color:#888;font-size:13px;">
+          Open the EventGlow chatroom to reply and connect with other attendees.
+        </p>
+      `),
+    }).catch((err) =>
+      console.error(`[EmailService] Announcement failed for ${email}:`, err.message)
+    )
+  );
+  await Promise.allSettled(promises);
+};
+
+// ─────────────────────────────────────────────────────────────
+//  Stub for backward compatibility — not used but imported in old code
+// ─────────────────────────────────────────────────────────────
+export const sendAttendeeWelcomeEmail = async () => {};

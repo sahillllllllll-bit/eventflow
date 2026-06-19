@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, User, MessageSquare } from 'lucide-react';
 import axiosInstance from '../api/axios.js';
 import EventCard from '../components/discover/EventCard.jsx';
 import SearchBar from '../components/discover/SearchBar.jsx';
+import { useAttendee } from '../context/AttendeeContext.jsx';
+import RestoreAccessModal from '../components/profile/RestoreAccessModal.jsx';
 
 const CATEGORIES = ['All', 'Fest', 'Hackathon', 'Seminar', 'Workshop', 'Other'];
 
@@ -13,6 +15,9 @@ const DiscoverPage = () => {
   const [error, setError]           = useState(null);
   const [search, setSearch]         = useState('');
   const [activeCategory, setActive] = useState('All');
+  const [showRestore, setShowRestore] = useState(false);
+
+  const { isLoggedIn, attendee } = useAttendee();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -64,6 +69,67 @@ const DiscoverPage = () => {
         </div>
       </nav>
 
+      {/* ─── MOBILE + TABLET: floating icon circles (fixed, scroll-persistent) ─── */}
+      <div className="fixed bottom-6 right-4 z-40 flex flex-col gap-2 lg:hidden">
+        <Link
+          to="/profile"
+          title="Profile"
+          className="w-11 h-11 flex items-center justify-center rounded-full border border-white/20 bg-bg hover:border-white/50 text-gray-500 hover:text-white transition active:scale-95"
+        >
+          <User className="w-4 h-4" />
+        </Link>
+        <Link
+          to="/community"
+          title="Community Chatrooms"
+          className="w-11 h-11 flex items-center justify-center rounded-full border border-white/20 bg-bg hover:border-white/50 text-gray-500 hover:text-white transition active:scale-95"
+        >
+          <MessageSquare className="w-4 h-4" />
+        </Link>
+
+        {/* Show restore button if not logged in */}
+        {!isLoggedIn && (
+          <button
+            onClick={() => setShowRestore(true)}
+            title="Restore access"
+            className="w-11 h-11 flex items-center justify-center rounded-full border border-brand/40 bg-bg hover:border-brand text-brand/60 hover:text-brand transition active:scale-95 text-xs font-black"
+          >
+            ?
+          </button>
+        )}
+      </div>
+
+      {/* ─── DESKTOP: Option B purple accent bars, top-right below nav ─── */}
+      <div className="hidden lg:flex relative" style={{ height: 0 }}>
+        <div className="absolute right-6 top-4 flex gap-2 z-30">
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 px-4 py-2 text-[#a29bfe] text-xs font-black uppercase tracking-widest transition hover:text-white"
+            style={{
+              fontFamily: '"Arial Black", sans-serif',
+              letterSpacing: '0.12em',
+              borderLeft: '3px solid #6c5ce7',
+              background: 'rgba(108,92,231,0.08)',
+            }}
+          >
+            <User className="w-3.5 h-3.5 shrink-0" />
+            {isLoggedIn ? attendee.name.split(' ')[0] : 'Profile'}
+          </Link>
+          <Link
+            to="/community"
+            className="flex items-center gap-2 px-4 py-2 text-[#a29bfe] text-xs font-black uppercase tracking-widest transition hover:text-white"
+            style={{
+              fontFamily: '"Arial Black", sans-serif',
+              letterSpacing: '0.12em',
+              borderLeft: '3px solid #6c5ce7',
+              background: 'rgba(108,92,231,0.08)',
+            }}
+          >
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            Community
+          </Link>
+        </div>
+      </div>
+
       {/* ─── HERO HEADER ─── */}
       <div
         className="w-full px-4 sm:px-6 py-16 sm:py-24 text-center"
@@ -76,7 +142,6 @@ const DiscoverPage = () => {
           backgroundSize: '120px 120px',
         }}
       >
-        {/* Label */}
         <div className="flex justify-center items-center gap-3 mb-6">
           <span className="block w-8 sm:w-12 h-px bg-gray-600" />
           <span className="text-gray-500 font-bold uppercase tracking-widest text-xs sm:text-sm"
@@ -97,12 +162,10 @@ const DiscoverPage = () => {
           Find. Join. Lead.
         </h1>
 
-        {/* Search */}
         <div className="max-w-2xl mx-auto mb-8">
           <SearchBar value={search} onChange={setSearch} />
         </div>
 
-        {/* Category filters */}
         <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
           {CATEGORIES.map(cat => (
             <button
@@ -119,71 +182,59 @@ const DiscoverPage = () => {
             </button>
           ))}
         </div>
-    
 
-      {/* ─── EVENTS GRID ─── */}
-      <div
-        className="w-full min-h-[60vh] px-4 sm:px-6 py-12"
-        
-      >
-        <div className="max-w-7xl mx-auto">
+        {/* ─── EVENTS GRID ─── */}
+        <div className="w-full min-h-[68vh] px-4 sm:px-6 py-12">
+          <div className="max-w-8xl mx-auto">
 
-          {/* Result count */}
-          {!loading && !error && (
-            <p className="text-gray-600 text-xs uppercase tracking-widest font-bold mb-6"
-              style={{ fontFamily: '"Arial Black", sans-serif' }}>
-              {filtered.length} event{filtered.length !== 1 ? 's' : ''} found
-            </p>
-          )}
-
-          {/* Loading */}
-          {loading && (
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/5"
-            >
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-bg h-72 animate-pulse" />
-              ))}
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="text-center py-20">
-              <p className="text-gray-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Empty */}
-          {!loading && !error && filtered.length === 0 && (
-            <div className="text-center py-24">
-              <p
-                className="text-gray-700 font-black uppercase text-3xl sm:text-5xl mb-4"
-                style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
-              >
-                No Events Found.
+            {!loading && !error && (
+              <p className="text-gray-600 text-xs uppercase tracking-widest font-bold mb-6"
+                style={{ fontFamily: '"Arial Black", sans-serif' }}>
+                {filtered.length} event{filtered.length !== 1 ? 's' : ''} found
               </p>
-              <p className="text-gray-600 text-sm">Try a different filter or search term.</p>
-            </div>
-          )}
+            )}
 
-          {/* Grid — gap-px with bg-white/5 creates hairline borders between cards */}
-          {!loading && !error && filtered.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/5">
-              {filtered.map(event => (
-                <div key={event._id} className="bg-bg">
-                  <EventCard event={event} />
-                </div>
-              ))}
-            </div>
-          )}
+            {loading && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="bg-white/5 h-72 animate-pulse" />
+                ))}
+              </div>
+            )}
+
+            {error && (
+              <div className="text-center py-20">
+                <p className="text-gray-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && filtered.length === 0 && (
+              <div className="text-center py-24">
+                <p
+                  className="text-gray-700 font-black uppercase text-3xl sm:text-5xl mb-4"
+                  style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
+                >
+                  No Events Found.
+                </p>
+                <p className="text-gray-600 text-sm">Try a different filter or search term.</p>
+              </div>
+            )}
+
+            {!loading && !error && filtered.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/5">
+                {filtered.map(event => (
+                  <div key={event._id} className="bg-bg">
+                    <EventCard event={event} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-        </div>
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-border px-4 sm:px-6 py-10 sm:py-12 text-center text-gray-500 bg-bg/95 backdrop-blur"
-        >
+      <footer className="border-t border-border px-4 sm:px-6 py-10 sm:py-12 text-center text-gray-500 bg-bg/95 backdrop-blur">
         <div className="max-w-7xl mx-auto">
           <p className="mb-3 sm:mb-4 text-sm sm:text-base">&copy; 2024 EventGlow. Made for college events.</p>
           <div className="flex justify-center gap-4 sm:gap-6 text-xs sm:text-sm mb-4">
@@ -202,6 +253,7 @@ const DiscoverPage = () => {
         </div>
       </footer>
 
+      {showRestore && <RestoreAccessModal onClose={() => setShowRestore(false)} />}
     </div>
   );
 };
