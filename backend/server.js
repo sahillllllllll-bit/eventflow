@@ -18,7 +18,7 @@ import payoutRoutes from './routes/payoutRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
-import attendeeRoutes from './routes/attendeeroutes.js';
+import attendeeroutes from './routes/attendeeroutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';

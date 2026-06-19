@@ -8,7 +8,7 @@ import {
   setAttendeePassword,
   getAttendeeProfile,
   checkMembership,
-} from '../controllers/attendeeController.js';
+} from '../controllers/Attendeecontroller.js';
 
 const router = express.Router();
 
