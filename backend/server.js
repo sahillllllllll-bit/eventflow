@@ -100,7 +100,7 @@ app.use('/api/payouts',       payoutRoutes);
 app.use('/api/transactions',  transactionRoutes);
 app.use('/api/certificates',  certificateRoutes);
 app.use('/api/payments',      paymentRoutes);
-app.use('/api/attendee',      attendeeRoutes);
+app.use('/api/attendee',      attendeeroutes);
 app.use('/api/chat',          chatRoutes);
 
 // ── Health Check ──────────────────────────────────────────────
