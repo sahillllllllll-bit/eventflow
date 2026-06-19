@@ -15,6 +15,8 @@ import {
   EyeOff,
 } from 'lucide-react';
 
+const DISPLAY_FONT = '"Arial Black", Impact, sans-serif';
+
 const INCOME_TYPES  = new Set(['ticket_purchase', 'registration_payment']);
 const EXPENSE_TYPES = new Set([
   'gateway_fee', 'platform_fee', 'certificate_generation',
@@ -24,9 +26,18 @@ const GATEWAY_FEE_PERCENT  = 2.1;
 const PLATFORM_FEE_PERCENT = 1;
 
 const METHODS = [
-  { id: 'bank', label: '🏦 Bank Transfer' },
-  { id: 'upi',  label: '📲 UPI' },
+  { id: 'bank', label: 'Bank Transfer' },
+  { id: 'upi',  label: 'UPI' },
 ];
+
+const SectionLabel = ({ children }) => (
+  <h2
+    className="text-sm font-black uppercase tracking-widest mb-4 text-white"
+    style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}
+  >
+    {children}
+  </h2>
+);
 
 const PayoutsPage = () => {
   const { toasts, showToast, removeToast } = useToast();
@@ -161,38 +172,51 @@ const PayoutsPage = () => {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto" />
-          <p className="text-gray-400 mt-4">Loading finance dashboard...</p>
+          <div className="border-2 border-[#6C47FF] border-t-transparent rounded-full animate-spin h-12 w-12 mx-auto" />
+          <p
+            className="text-[#6b7280] mt-4 text-xs font-black uppercase tracking-widest"
+            style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.12em' }}
+          >
+            Loading Finance Dashboard...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen bg-[#1a1a1a]">
       <Sidebar />
 
       <div className="lg:ml-60 min-h-screen">
 
         {/* Header */}
-        <div className="bg-surface border-b border-surface-overlay p-4 sm:p-6 sticky top-0 z-10">
+        <div className="bg-[#111] border-b border-white/10 p-4 sm:p-6 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex-1 mr-4">
-              <h1 className="text-2xl sm:text-3xl font-bold">Finance Dashboard</h1>
-              <p className="text-gray-400 mt-1 text-sm mb-3">Track earnings, fees, and payouts</p>
-              <div className="p-4 bg-yellow-500/15 border border-yellow-500/40 rounded-lg">
+              <h1
+                className="font-black uppercase mb-1"
+                style={{ fontFamily: DISPLAY_FONT, fontSize: 'clamp(22px, 4vw, 34px)', letterSpacing: '0.01em' }}
+              >
+                Finance Dashboard
+              </h1>
+              <p className="text-[#b4b4b4] mt-1 text-sm mb-3">Track earnings, fees, and payouts</p>
+              <div className="p-4 border-l-[3px] border-[#f5b942] bg-[#f5b942]/10">
                 <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-[#f5b942] flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-yellow-300 mb-1 text-sm sm:text-base">
-                      ⚠️ Payment &amp; Withdrawal — Currently Managed Manually
+                    <h3
+                      className="font-black uppercase tracking-widest text-[#f5b942] mb-1 text-xs sm:text-sm"
+                      style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.08em' }}
+                    >
+                      Payment &amp; Withdrawal — Currently Managed Manually
                     </h3>
-                    <p className="text-sm text-yellow-200/80 leading-relaxed">
+                    <p className="text-sm text-[#f5b942]/80 leading-relaxed">
                       Automated payouts are under development. All withdrawals are handled manually by our team.{' '}
-                      For an <strong className="text-yellow-300">immediate withdrawal</strong>, email us at{' '}
-                      <a href="mailto:imaginesahill@gmail.com" className="underline text-yellow-300 hover:text-yellow-100 transition font-medium">
+                      For an <strong className="text-[#f5b942]">immediate withdrawal</strong>, email us at{' '}
+                      <a href="mailto:imaginesahill@gmail.com" className="underline text-[#f5b942] hover:text-white transition font-medium">
                         imaginesahill@gmail.com
                       </a>
                       . Otherwise submit a request below and our team will reach out.
@@ -203,7 +227,8 @@ const PayoutsPage = () => {
             </div>
             <button
               onClick={fetchPayoutData}
-              className="px-4 py-2 bg-brand/20 hover:bg-brand/30 text-brand border border-brand/30 rounded-lg transition text-sm font-medium shrink-0"
+              className="px-4 py-2 border border-[#6C47FF]/40 text-[#a29bfe] hover:bg-[#6C47FF]/10 hover:border-[#6C47FF] transition text-xs font-black uppercase tracking-widest shrink-0 active:scale-95"
+              style={{ fontFamily: DISPLAY_FONT }}
             >
               Refresh
             </button>
@@ -215,8 +240,8 @@ const PayoutsPage = () => {
 
           {/* Financial Overview */}
           <section>
-            <h2 className="text-lg font-semibold mb-4">Financial Overview</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SectionLabel>Financial Overview</SectionLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/5">
               <FinanceCard title="Gross Revenue"           amount={grossRevenue}  icon={TrendingUp}  color="green" subtitle={`${totalTickets} ticket${totalTickets !== 1 ? 's' : ''} sold`}                                          loading={loading} />
               <FinanceCard title="Gateway Fees (Razorpay)" amount={gatewayFees}   icon={CreditCard}  color="red"   subtitle="Automatic deduction"                                                                                    loading={loading} />
               <FinanceCard title="Platform Charges"        amount={platformFees}  icon={AlertCircle} color="amber" subtitle={`${PLATFORM_FEE_PERCENT}% of revenue`}                                                                  loading={loading} />
@@ -225,8 +250,8 @@ const PayoutsPage = () => {
 
           {/* Withdrawal & Status */}
           <section>
-            <h2 className="text-lg font-semibold mb-4">Withdrawal &amp; Status</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SectionLabel>Withdrawal &amp; Status</SectionLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/5">
               <FinanceCard title="Net Payout"            amount={netPayout}       icon={DollarSign}  color="blue"  subtitle="Ready to withdraw"                                                                                      loading={loading} />
               <FinanceCard title="Pending Balance"       amount={pendingAmount}   icon={Clock}       color="amber" subtitle={`${totalTransactions} total transaction${totalTransactions !== 1 ? 's' : ''}`}                         loading={loading} />
               <FinanceCard title="Completed Withdrawals" amount={completedAmount} icon={CheckCircle} color="green" subtitle="Successfully processed"                                                                                 loading={loading} />
@@ -234,12 +259,17 @@ const PayoutsPage = () => {
           </section>
 
           {/* Info Banner */}
-          <div className="p-4 sm:p-6 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div className="p-4 sm:p-6 border-l-[3px] border-[#6c5ce7]" style={{ background: 'rgba(108,92,231,0.08)' }}>
             <div className="flex gap-3 sm:gap-4">
-              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5" style={{ color: '#a29bfe' }} />
               <div>
-                <h3 className="font-semibold text-blue-300 mb-1 text-sm sm:text-base">How Payouts Work</h3>
-                <p className="text-sm text-blue-200/80">
+                <h3
+                  className="font-black uppercase tracking-widest mb-1 text-xs sm:text-sm"
+                  style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.08em', color: '#a29bfe' }}
+                >
+                  How Payouts Work
+                </h3>
+                <p className="text-sm text-[#b4b4b4]">
                   Your net payout is calculated as: Gross Revenue − Gateway Fees − Platform Charges ({PLATFORM_FEE_PERCENT}%).
                   Withdrawals are processed to your registered bank account or UPI within 24–48 hours.
                 </p>
@@ -248,26 +278,31 @@ const PayoutsPage = () => {
           </div>
 
           {/* Withdraw Earnings */}
-          <section className="p-4 sm:p-6 bg-surface border border-surface-overlay rounded-lg">
+          <section className="p-4 sm:p-6 bg-[#1a1a1a] border border-white/10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-lg sm:text-xl font-semibold mb-2">Withdraw Earnings</h2>
-                <p className="text-gray-400 text-sm">
+                <h2
+                  className="font-black uppercase tracking-widest mb-2 text-base sm:text-lg"
+                  style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.08em' }}
+                >
+                  Withdraw Earnings
+                </h2>
+                <p className="text-[#b4b4b4] text-sm">
                   Available Balance:{' '}
                   <span className="inline-flex items-center gap-2">
                     {showBalance ? (
                       <>
-                        <span className="text-brand font-bold text-lg">
+                        <span className="font-black text-lg" style={{ color: '#a29bfe' }}>
                           ₹{netPayout.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </span>
-                        <button onClick={() => setShowBalance(false)} className="text-gray-400 hover:text-gray-300 transition">
+                        <button onClick={() => setShowBalance(false)} className="text-gray-500 hover:text-white transition">
                           <EyeOff className="w-4 h-4" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span className="text-brand font-bold text-lg">••••••</span>
-                        <button onClick={() => setShowBalance(true)} className="text-gray-400 hover:text-gray-300 transition">
+                        <span className="font-black text-lg" style={{ color: '#a29bfe' }}>••••••</span>
+                        <button onClick={() => setShowBalance(true)} className="text-gray-500 hover:text-white transition">
                           <Eye className="w-4 h-4" />
                         </button>
                       </>
@@ -279,7 +314,8 @@ const PayoutsPage = () => {
                 <button
                   onClick={() => setShowWithdrawForm(true)}
                   disabled={netPayout <= 0}
-                  className="px-6 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                  className="px-6 py-3 bg-[#6C47FF] text-white font-black uppercase tracking-widest transition disabled:opacity-40 disabled:cursor-not-allowed text-xs whitespace-nowrap active:scale-95"
+                  style={{ fontFamily: DISPLAY_FONT }}
                 >
                   Request Withdrawal
                 </button>
@@ -290,9 +326,9 @@ const PayoutsPage = () => {
               <form onSubmit={handleWithdraw} className="space-y-5">
 
                 {/* Note */}
-                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex gap-3">
-                  <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-200">
+                <div className="p-4 border-l-[3px] border-[#f5b942] bg-[#f5b942]/10 flex gap-3">
+                  <Clock className="w-5 h-5 text-[#f5b942] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#f5b942]/90">
                     Requests are processed within <strong>24–48 hours</strong>.
                     Fill in your preferred payment method — at least one field is required.
                   </p>
@@ -305,11 +341,12 @@ const PayoutsPage = () => {
                       key={m.id}
                       type="button"
                       onClick={() => setPayMethod(m.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${
+                      className={`px-4 py-2 text-xs font-black uppercase tracking-widest transition border active:scale-95 ${
                         payMethod === m.id
-                          ? 'bg-brand text-black border-brand'
-                          : 'bg-bg border-surface-overlay text-gray-300 hover:border-brand/50'
+                          ? 'bg-white text-gray-900 border-white'
+                          : 'bg-transparent border-white/15 text-gray-400 hover:text-white hover:border-white/30'
                       }`}
+                      style={{ fontFamily: DISPLAY_FONT }}
                     >
                       {m.label}
                     </button>
@@ -320,46 +357,48 @@ const PayoutsPage = () => {
                 {payMethod === 'bank' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        Account Holder Name <span className="text-gray-600 text-xs">(optional)</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        Account Holder Name <span className="text-[#555] normal-case font-normal tracking-normal">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={withdrawForm.accountName}
                         onChange={(e) => setWithdrawForm(p => ({ ...p, accountName: e.target.value }))}
                         placeholder="e.g. Rahul Sharma"
-                        className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand text-sm"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        Bank Account Number <span className="text-gray-600 text-xs">(optional)</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        Bank Account Number <span className="text-[#555] normal-case font-normal tracking-normal">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={withdrawForm.accountNumber}
                         onChange={(e) => setWithdrawForm(p => ({ ...p, accountNumber: e.target.value }))}
                         placeholder="e.g. 9876543210123456"
-                        className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand text-sm"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        IFSC Code <span className="text-gray-600 text-xs">(optional)</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        IFSC Code <span className="text-[#555] normal-case font-normal tracking-normal">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={withdrawForm.ifsc}
                         onChange={(e) => setWithdrawForm(p => ({ ...p, ifsc: e.target.value.toUpperCase() }))}
                         placeholder="e.g. SBIN0001234"
-                        className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand text-sm font-mono"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm font-mono"
                         maxLength={11}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">Withdrawal Amount</label>
-                      <div className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-brand font-semibold text-sm flex items-center gap-1">
-                        <span className="text-gray-400">₹</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        Withdrawal Amount
+                      </label>
+                      <div className="w-full px-4 py-3 bg-white/5 border border-white/10 font-semibold text-sm flex items-center gap-1" style={{ color: '#a29bfe' }}>
+                        <span className="text-gray-500">₹</span>
                         {netPayout.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         <span className="text-gray-500 font-normal text-xs ml-1">(full balance)</span>
                       </div>
@@ -371,33 +410,35 @@ const PayoutsPage = () => {
                 {payMethod === 'upi' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        UPI ID <span className="text-red-400 text-xs">*required</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        UPI ID <span className="text-[#dc2626] normal-case font-normal tracking-normal">*required</span>
                       </label>
                       <input
                         type="text"
                         value={withdrawForm.upiId}
                         onChange={(e) => setWithdrawForm(p => ({ ...p, upiId: e.target.value }))}
                         placeholder="e.g. rahul@upi or 9876543210@paytm"
-                        className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand text-sm font-mono"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">
-                        Display Name <span className="text-gray-600 text-xs">(optional)</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        Display Name <span className="text-[#555] normal-case font-normal tracking-normal">(optional)</span>
                       </label>
                       <input
                         type="text"
                         value={withdrawForm.displayName}
                         onChange={(e) => setWithdrawForm(p => ({ ...p, displayName: e.target.value }))}
                         placeholder="Name shown in UPI app"
-                        className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-brand text-sm"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-2">Withdrawal Amount</label>
-                      <div className="w-full px-4 py-3 bg-bg border border-surface-overlay rounded-lg text-brand font-semibold text-sm flex items-center gap-1">
-                        <span className="text-gray-400">₹</span>
+                      <label className="block text-xs font-black uppercase tracking-widest text-[#b4b4b4] mb-2" style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.1em' }}>
+                        Withdrawal Amount
+                      </label>
+                      <div className="w-full px-4 py-3 bg-white/5 border border-white/10 font-semibold text-sm flex items-center gap-1" style={{ color: '#a29bfe' }}>
+                        <span className="text-gray-500">₹</span>
                         {netPayout.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         <span className="text-gray-500 font-normal text-xs ml-1">(full balance)</span>
                       </div>
@@ -410,18 +451,20 @@ const PayoutsPage = () => {
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-5 py-3 border border-surface-overlay text-white rounded-lg hover:bg-surface-overlay transition text-sm"
+                    className="px-5 py-3 border border-white/15 text-gray-300 hover:text-white hover:border-white/30 transition text-xs font-black uppercase tracking-widest active:scale-95"
+                    style={{ fontFamily: DISPLAY_FONT }}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={withdrawing || netPayout <= 0}
-                    className="px-5 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg transition disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                    className="px-5 py-3 bg-[#6C47FF] text-white font-black uppercase tracking-widest transition disabled:opacity-50 text-xs flex items-center justify-center gap-2 active:scale-95"
+                    style={{ fontFamily: DISPLAY_FONT }}
                   >
                     {withdrawing ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black" />
+                        <div className="border-2 border-white border-t-transparent rounded-full animate-spin h-4 w-4" />
                         Submitting...
                       </>
                     ) : (
@@ -438,7 +481,7 @@ const PayoutsPage = () => {
 
           {/* Transaction Activity */}
           <section>
-            <h2 className="text-lg font-semibold mb-4">Transaction Activity</h2>
+            <SectionLabel>Transaction Activity</SectionLabel>
             <TransactionFeed organizerId={null} />
           </section>
         </div>

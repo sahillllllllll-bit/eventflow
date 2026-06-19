@@ -1,7 +1,9 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
-import { Zap, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Zap, Eye, EyeOff, CheckCircle, ArrowRight } from 'lucide-react';
+
+const DISPLAY_FONT = '"Arial Black", Impact, sans-serif';
 
 // Allowed characters validator — blocks SQL, script injection attempts
 const containsInjection = (value) => {
@@ -122,51 +124,108 @@ const RegisterPage = () => {
     }
   };
 
+  const fieldLabelClass =
+    'block text-xs font-black uppercase tracking-widest mb-2 text-[#b4b4b4]';
+  const inputClass =
+    'w-full px-4 py-2.5 bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:border-white/30 outline-none transition text-sm';
+
   return (
-    <div className="min-h-screen bg-bg flex">
+    <div className="min-h-screen bg-[#1a1a1a] flex">
       {/* Left Side */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-brand/20 to-brand-dark/20 flex-col justify-center items-center p-12">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <Zap className="w-12 h-12 text-brand" />
-            <span className="text-4xl font-bold">EventGlow</span>
+      <div
+        className="hidden lg:flex w-1/2 flex-col justify-center items-center p-12 border-r border-white/10 relative"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
+          backgroundSize: '120px 120px',
+          backgroundColor: '#111',
+        }}
+      >
+        <div className="text-center max-w-md">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            {/* <Zap className="w-9 h-9" style={{ color: '#6C47FF' }} /> */}
+            <span
+              className="text-3xl font-black uppercase tracking-widest"
+              style={{ fontFamily: DISPLAY_FONT }}
+            >
+              EventGlow
+            </span>
           </div>
-          <p className="text-xl text-gray-300 max-w-md">
+          <p className="text-lg text-[#b4b4b4] leading-relaxed">
             Start managing your college events today. It takes less than 2 minutes to set up.
           </p>
+          <div className="mt-10 flex justify-center">
+            <span
+              className="inline-block px-4 py-2 border-l-[3px] text-xs font-black uppercase tracking-widest"
+              style={{
+                fontFamily: DISPLAY_FONT,
+                borderLeftColor: '#6c5ce7',
+                background: 'rgba(108,92,231,0.08)',
+                color: '#a29bfe',
+              }}
+            >
+              Free To Start, No Card Required
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Right Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 md:px-12">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 py-12 md:px-16">
         <div className="max-w-md mx-auto w-full">
-          <h1 className="text-4xl font-bold mb-2">Create Account</h1>
-          <p className="text-gray-400 mb-8">Join EventGlow to create amazing events</p>
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            {/* <Zap className="w-7 h-7" style={{ color: '#6C47FF' }} /> */}
+            <span
+              className="text-xl font-black uppercase tracking-widest"
+              style={{ fontFamily: DISPLAY_FONT }}
+            >
+              EventGlow
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 mb-2">
+            <span className="block w-8 h-px bg-gray-600" />
+            <span
+              className="text-[#6b7280] tracking-widest text-xs font-bold uppercase"
+              style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.16em' }}
+            >
+              New Account
+            </span>
+          </div>
+          <h1
+            className="font-black uppercase mb-2"
+            style={{ fontFamily: DISPLAY_FONT, fontSize: 'clamp(30px, 6vw, 44px)', letterSpacing: '0.01em' }}
+          >
+            Create Account
+          </h1>
+          <p className="text-[#b4b4b4] mb-8 text-sm sm:text-base">Join EventGlow to create amazing events</p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Error Banner */}
             {formError && (
-              <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+              <div className="p-4 border-l-[3px] border-[#dc2626] bg-[#dc2626]/10 text-[#ff6b6b] text-sm">
                 {formError}
               </div>
             )}
 
             {/* ✅ Success Banner */}
             {successMessage && (
-              <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm flex items-center gap-2">
+              <div className="p-4 border-l-[3px] border-[#00b894] bg-[#00b894]/10 text-[#00d9a3] text-sm flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 flex-shrink-0" />
                 {successMessage}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-2">Full Name</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                Full Name
+              </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                className={inputClass}
                 placeholder="John Doe"
                 maxLength={100}
                 autoComplete="name"
@@ -175,13 +234,15 @@ const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">College Name</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                College Name
+              </label>
               <input
                 type="text"
                 name="college"
                 value={formData.college}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                className={inputClass}
                 placeholder="XYZ College"
                 maxLength={150}
                 autoComplete="organization"
@@ -190,13 +251,15 @@ const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Email</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                className={inputClass}
                 placeholder="you@college.edu"
                 maxLength={254}
                 autoComplete="email"
@@ -205,13 +268,15 @@ const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Phone (Optional)</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                Phone <span className="normal-case text-[#555] tracking-normal font-normal">(Optional)</span>
+              </label>
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                className={inputClass}
                 placeholder="+91 98765 43210"
                 maxLength={20}
                 autoComplete="tel"
@@ -219,14 +284,16 @@ const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Password</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                  className={inputClass}
                   placeholder="••••••••"
                   maxLength={128}
                   autoComplete="new-password"
@@ -235,7 +302,7 @@ const RegisterPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-300"
+                  className="absolute right-3 top-2.5 text-gray-500 hover:text-white transition"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -244,13 +311,15 @@ const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Confirm Password</label>
+              <label className={fieldLabelClass} style={{ fontFamily: DISPLAY_FONT, letterSpacing: '0.14em' }}>
+                Confirm Password
+              </label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-surface border border-border rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition text-sm"
+                className={inputClass}
                 placeholder="••••••••"
                 maxLength={128}
                 autoComplete="new-password"
@@ -261,20 +330,25 @@ const RegisterPage = () => {
             <button
               type="submit"
               disabled={loading || !!successMessage}
-              className="w-full py-2.5 bg-brand hover:bg-brand-light text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm mt-6"
+              className="w-full py-3 bg-[#6C47FF] text-white font-black uppercase tracking-widest transition disabled:opacity-50 disabled:cursor-not-allowed text-sm mt-6 flex items-center justify-center gap-2 active:scale-95"
+              style={{ fontFamily: DISPLAY_FONT }}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Creating Account...' : (
+                <>
+                  Create Account <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-gray-400 text-sm">
+          <div className="mt-8 pt-6 border-t border-white/10 text-center text-sm text-[#6b7280]">
             <p>
               Already have an account?{' '}
               <Link
                 to={`/login${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
-                className="text-brand hover:text-brand-light"
+                className="text-[#a29bfe] hover:text-white font-bold uppercase tracking-wide transition"
               >
-                Sign in
+                Sign In
               </Link>
             </p>
           </div>

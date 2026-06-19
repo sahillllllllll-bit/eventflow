@@ -58,16 +58,22 @@ const Sidebar = () => {
       }`}>
 
         {/* Logo */}
-        <div className="p-6 border-b border-surface-overlay flex items-center gap-3">
-          <img
-            src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
-            alt="EventGlow Logo"
-            className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
-          />
-          <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-            EventGlow
-          </span>
-        </div>
+        <div
+  onClick={() => navigate('/')}
+  className="p-6 border-b border-white/10 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition"
+>
+  <img
+    src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
+    alt="EventGlow Logo"
+    className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+  />
+  <span
+    className="text-base sm:text-lg font-black uppercase tracking-widest bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent"
+    style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
+  >
+    EventGlow
+  </span>
+</div>
 
         {/* Nav */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

@@ -8,18 +8,23 @@ const LandingPage = () => {
     <div className="min-h-screen bg-bg text-white">
 
       {/* ─── NAVBAR (unchanged) ─── */}
-      <nav className="border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-50 bg-bg/95 backdrop-blur">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <img
-              src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
-              alt="EventGlow Logo"
-              className="h-10 sm:h-16 w-auto object-contain"
-            />
-            <span className="text-xl sm:text-2xl font-bold text-white">EventGlow</span>
-          </div>
-        </div>
-      </nav>
+      <nav className="border-b border-white/10 px-4 sm:px-6 py-4 sticky top-0 z-50 bg-[#1a1a1a]/95 backdrop-blur">
+  <div className="max-w-7xl mx-auto flex justify-between items-center">
+    <div className="flex items-center gap-3">
+      <img
+        src="https://res.cloudinary.com/dmhykhefr/image/upload/v1779460044/ChatGPT_Image_May_21__2026__02_47_45_PM-removebg-preview_kww7oj.png"
+        alt="EventGlow Logo"
+        className="h-8 sm:h-12 w-auto object-contain"
+      />
+      <span
+        className="text-lg sm:text-xl text-white font-black uppercase tracking-widest"
+        style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
+      >
+        EventGlow
+      </span>
+    </div>
+  </div>
+</nav>
 
       {/* ─── HERO ─── */}
       <section
@@ -151,29 +156,33 @@ Find it. Host it. Own it.
       </section>
 
       {/* ─── FOOTER (unchanged) ─── */}
-      <footer className="border-t border-border px-4 sm:px-6 py-10 sm:py-12 text-center text-gray-500">
-            <div className="max-w-7xl mx-auto">
-                <p className="mb-3 sm:mb-4 text-sm sm:text-base">&copy; 2024 EventGlow. Made for college events.</p>
-                <div className="flex justify-center gap-4 sm:gap-6 text-xs sm:text-sm mb-4">
-                <Link to="/privacy-policy" className="hover:text-gray-300 transition">Privacy</Link>
-                <Link to="/terms-and-conditions" className="hover:text-gray-300 transition">Terms</Link>
-                <Link to="/contact" className="hover:text-gray-300 transition">Contact</Link>
-                <Link to="/refund-policy" className="hover:text-gray-300 transition">Refund Policy</Link>
-                </div>
-                <p className="text-xs text-gray-600" >
-                Designed & crafted by{' '}
-                
-                    <a
-                    href="https://www.linkedin.com/in/sahil-ll"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-white transition underline underline-offset-2"
-                >
-                    Sahil Singh
-                </a>
-                </p>
-            </div>
-            </footer>
+       <footer className="border-t border-white/10 px-4 sm:px-6 py-10 sm:py-12 bg-[#1a1a1a]/95 text-center text-[#6b7280]">
+  <div className="max-w-7xl mx-auto">
+    <p
+      className="mb-4 sm:mb-5 text-xs sm:text-sm uppercase tracking-widest font-black"
+      style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
+    >
+      &copy; 2026 EventGlow.
+    </p>
+    <div
+      className="flex justify-center flex-wrap gap-4 sm:gap-6 text-xs sm:text-sm uppercase tracking-widest font-black"
+      style={{ fontFamily: '"Arial Black", Impact, sans-serif' }}
+    >
+      <Link to="/privacy-policy" className="hover:text-white transition">
+        Privacy
+      </Link>
+      <Link to="/terms-and-conditions" className="hover:text-white transition">
+        Terms
+      </Link>
+      <Link to="/contact" className="hover:text-white transition">
+        Contact
+      </Link>
+      <Link to="/refund-policy" className="hover:text-white transition">
+        Refund Policy
+      </Link>
+    </div>
+  </div>
+</footer>
 
     </div>
   );
