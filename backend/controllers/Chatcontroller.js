@@ -1,5 +1,5 @@
 import ChatMessage from '../models/ChatMessage.js';
-import AttendeeUser from '../models/AttendeeUser.js';
+import AttendeeUser from '../models/Attendeeuser.js';
 import Registration from '../models/Registration.js';
 import Event from '../models/Event.js';
 import { auth } from '../middleware/auth.js';

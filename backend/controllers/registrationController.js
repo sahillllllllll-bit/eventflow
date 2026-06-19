@@ -1,5 +1,5 @@
 import Registration from '../models/Registration.js';
-import AttendeeUser from '../models/AttendeeUser.js';
+import AttendeeUser from '../models/Attendeeuser.js';
 import Event from '../models/Event.js';
 import { generateTicketId } from '../utils/helpers.js';
 import { generateQRCode } from '../services/qrService.js';

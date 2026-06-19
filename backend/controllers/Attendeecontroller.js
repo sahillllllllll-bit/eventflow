@@ -1,4 +1,4 @@
-import AttendeeUser from '../models/AttendeeUser.js';
+import AttendeeUser from '../models/Attendeeuser.js';
 import Registration from '../models/Registration.js';
 import { sendAttendeeOTPEmail } from '../services/emailService.js';
 
