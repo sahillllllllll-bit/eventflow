@@ -1,4 +1,4 @@
-import ChatMessage from '../models/ChatMessage.js';
+import ChatMessage from '../models/Chatmessage.js';
 import AttendeeUser from '../models/Attendeeuser.js';
 import Registration from '../models/Registration.js';
 import Event from '../models/Event.js';
