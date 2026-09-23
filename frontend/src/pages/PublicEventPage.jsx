@@ -345,11 +345,12 @@ const PublicEventPage = () => {
             {event.isOnline ? (
               <>
                 <p className="text-white text-sm font-semibold mb-2">Online Event</p>
-                <a href={event.meetLink} target="_blank" rel="noopener noreferrer"
+                {/* <a href={event.meetLink} target="_blank" rel="noopener noreferrer"
                   className="text-brand hover:text-brand-light text-xs font-black uppercase tracking-wider transition"
                   style={{ fontFamily: '"Arial Black", sans-serif' }}>
                   Join Link →
-                </a>
+                </a> */}
+                Join link will be shared with registered participants via email/Ticket.
               </>
             ) : (
               <>

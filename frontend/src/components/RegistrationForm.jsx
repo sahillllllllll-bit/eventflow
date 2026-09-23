@@ -38,7 +38,7 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
   const lockedFields = [
     { id: 'fullName', label: 'Full Name', type: 'text', placeholder: 'Your full name', required: true },
     { id: 'email', label: 'Email Address', type: 'email', placeholder: 'your.email@example.com', required: true },
-    { id: 'phone', label: 'Phone Number', type: 'phone', placeholder: '10-digit phone number', required: true },
+    // { id: 'phone', label: 'Phone Number', type: 'phone', placeholder: '10-digit phone number', required: false },
   ];
 
   const validateForm = () => {
@@ -287,7 +287,7 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
                       className={fieldClasses}
                     />
                   )}
-                  {field.type === 'phone' && (
+                  {/* {field.type === 'phone' && (
                     <input
                       type="tel"
                       value={value}
@@ -295,7 +295,7 @@ const RegistrationForm = ({ formSections, onSubmit, loading = false, isPaid = fa
                       placeholder={field.placeholder}
                       className={fieldClasses}
                     />
-                  )}
+                  )} */}
                   {error && (
                     <div className="flex items-center gap-2 mt-2 text-sm text-red-400">
                       <AlertCircle className="w-4 h-4" />
